@@ -16,7 +16,7 @@ def test_pyvista_basic():
     sphere = pv.Sphere(radius=1.0, center=(0, 0, 0))
 
     print(f"SUCCESS: PyVista is working!")
-    print(f"  Sphere mesh has {sphere.n_points} vertices and {sphere.n_faces} faces")
+    print(f"  Sphere mesh has {sphere.n_points} vertices and {sphere.n_cells} faces")
     print(f"  Bounds: {sphere.bounds}")
 
     # Test that we can extract vertices and faces (same operation we will use for real meshes)

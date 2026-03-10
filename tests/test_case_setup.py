@@ -12,9 +12,14 @@
 import os
 import sys
 import tempfile
+import importlib.util
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from addon.case_setup import setup_incompressible_case
+# Load case_setup directly (bypasses addon/__init__.py which imports bpy)
+_cs_path = os.path.join(os.path.dirname(__file__), "..", "addon", "case_setup.py")
+_spec = importlib.util.spec_from_file_location("case_setup", _cs_path)
+_cs = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_cs)
+setup_incompressible_case = _cs.setup_incompressible_case
 
 def main():
     with tempfile.TemporaryDirectory() as tmpdir:

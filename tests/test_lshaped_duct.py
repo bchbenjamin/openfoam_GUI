@@ -9,8 +9,14 @@
 import os
 import sys
 import tempfile
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from addon.mesh_builder import build_from_spec
+import importlib.util
+
+# Load mesh_builder directly (bypasses addon/__init__.py which imports bpy)
+_mb_path = os.path.join(os.path.dirname(__file__), "..", "addon", "mesh_builder.py")
+_spec = importlib.util.spec_from_file_location("mesh_builder", _mb_path)
+_mb = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_mb)
+build_from_spec = _mb.build_from_spec
 
 def test_lshaped_duct():
     """
