@@ -1,6 +1,6 @@
 bl_info = {"name": "Classy Blocks Integration", "category": "Mesh", "blender": (4, 0, 0)}
 import bpy
-from . import properties, ui, operators
+from . import properties, ui, operators, geometry_extractor, vtk_importer
 
 classes = [
     properties.ClassyMeshObjectProperties,
