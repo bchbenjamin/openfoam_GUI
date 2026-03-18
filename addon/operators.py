@@ -27,7 +27,7 @@ class CLASSY_OT_generate_mesh(bpy.types.Operator):
             spec = geometry_extractor.extract_geometry(context)
 
             if not spec["blocks"]:
-                self.report({'WARNING'},
+                self.report({'ERROR'},
                             "No block objects found — tag at least one "
                             "object as a block in the Classy Blocks panel")
                 return {'CANCELLED'}

@@ -52,7 +52,8 @@ def build_extrude_block(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
       face — a list of 4 [x,y,z] points defining the base quadrilateral
       extrude_vector — [dx, dy, dz] direction and length of the extrusion
     """
-    extrude = cb.Extrude(spec["face"], spec["extrude_vector"])
+    face = cb.Face(spec["face"])
+    extrude = cb.Extrude(face, spec["extrude_vector"])
     extrude.chop(0, count=spec["cells"][0], c2c_expansion=spec["grading"][0])
     extrude.chop(1, count=spec["cells"][1], c2c_expansion=spec["grading"][1])
     extrude.chop(2, count=spec["cells"][2], c2c_expansion=spec["grading"][2])
@@ -68,8 +69,9 @@ def build_revolve_block(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
       origin — [x, y, z] point on the axis
     """
     angle_radians = math.radians(spec["angle"])
+    face = cb.Face(spec["face"])
     revolve = cb.Revolve(
-        spec["face"],
+        face,
         angle_radians,
         spec["axis"],
         spec["origin"],
