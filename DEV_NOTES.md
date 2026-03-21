@@ -1,7 +1,7 @@
 # DEV_NOTES.md — Classy Blocks Integration
 
 > **Last updated:** 2026-03-18  
-> **Status:** Week 2 implementation complete
+> **Status:** Week 3 implementation complete
 
 ---
 
@@ -18,7 +18,7 @@ classy_blender_mesh/
 │   ├── operators.py              # [LIVE] All 4 operators wired to real logic (Weeks 1–2)
 │   ├── properties.py             # [LIVE] Object & scene custom properties (basic set)
 │   ├── ui.py                     # [LIVE] Panel UI for 3D Viewport sidebar
-│   └── vtk_importer.py           # [STUB] Placeholder — reads VTK and creates Blender meshes
+│   └── vtk_importer.py           # [LIVE] Reads VTK files → creates Blender mesh objects
 ├── foam_cases/                   # Example pipeline scripts
 │   ├── cube_test/                # OpenFOAM case directory for cube example
 │   ├── generate_cube.py          # [LIVE] Generates a cube blockMeshDict
@@ -29,6 +29,7 @@ classy_blender_mesh/
 │   ├── test_subprocess_foam.py   # [LIVE] ✅ OpenFOAM subprocess env injection test
 │   ├── test_pyvista.py           # [LIVE] ✅ PyVista install and VTK roundtrip test
 │   ├── test_lshaped_duct.py      # [LIVE] ✅ Multi-block topology test (2 adjacent boxes)
+│   ├── test_vtk_importer_unit.py # [LIVE] ✅ 15 unit tests for VTK importer
 │   └── test_case_setup.py        # [LIVE] ✅ OF13 case file generation test
 ├── Progress.md/                  # Planning and tracking documents
 │   ├── Classy Blocks Prototype Documentation.md
@@ -57,10 +58,10 @@ classy_blender_mesh/
 |---|---|---|
 | `geometry_extractor.py` | Extracts box/extrude/revolve blocks from Blender → spec dict | ✅ Unit tests (mocked bpy) |
 
-### Placeholder / Stub (STUB)
-| Module | Purpose | What's missing |
+### Fully Implemented (NEW — Week 3)
+| Module | Purpose | Standalone testable? |
 |---|---|---|
-| `vtk_importer.py` | Reads VTK files → creates Blender mesh objects | `load_vtk_as_blender_mesh()` returns `None`, `_parse_pyvista_faces()` and `_remove_existing_object()` are `pass`. `find_vtk_files()` is implemented. |
+| `vtk_importer.py` | Reads VTK → creates Blender mesh objects, face parsing, cleanup | ✅ Unit tests (mocked bpy) |
 
 ---
 
@@ -70,10 +71,10 @@ All 4 operators in `operators.py` are now wired with real logic:
 
 | Operator | What it does | Status |
 |---|---|---|
-| `CLASSY_OT_generate_mesh` | Calls `geometry_extractor.extract_geometry()` → `mesh_builder.build_from_spec()` | ✅ Wired (depends on geometry_extractor stub) |
+| `CLASSY_OT_generate_mesh` | Calls `geometry_extractor.extract_geometry()` → `mesh_builder.build_from_spec()` | ✅ Wired (fully functional) |
 | `CLASSY_OT_run_blockmesh` | Calls `foam_runner.run_blockmesh()` → parses quality metrics | ✅ Wired |
 | `CLASSY_OT_convert_vtk` | Calls `foam_runner.run_foam_to_vtk()` → counts output files | ✅ Wired |
-| `CLASSY_OT_reload_mesh` | Calls `vtk_importer.find_vtk_files()` → `load_vtk_as_blender_mesh()` | ✅ Wired (depends on vtk_importer stub) |
+| `CLASSY_OT_reload_mesh` | Calls `vtk_importer.find_vtk_files()` → `load_vtk_as_blender_mesh()` | ✅ Wired (fully functional) |
 
 All operators include:
 - Path validation guard (bail early if `case_path` is empty)
@@ -84,25 +85,22 @@ All operators include:
 
 ## Test Results (2026-03-18)
 
-All automated tests run with `python3 -m pytest tests/ -v` — **14 passed**:
+All automated tests run with `python3 -m pytest tests/ -v` — **29 passed**:
 
 | Test | Result | Notes |
 |---|---|---|
 | `test_classy.py::test_simple_box` | ✅ PASSED | classy_blocks 1.10.0, `mesh.add()` API |
 | `test_geometry_extractor_unit.py` (10 tests) | ✅ ALL PASSED | Bounding box, coord preservation, dispatch, defaults |
-| `test_lshaped_duct.py::test_lshaped_duct` | ✅ PASSED | 2-block merge, importlib fix applied |
-| `test_pyvista.py::test_pyvista_basic` | ✅ PASSED | PyVista 0.47.1, `.n_cells` fix applied |
-| `test_subprocess_foam.py::test_blockmesh_subprocess` | ✅ PASSED | OF13 env injection works |
-| `test_case_setup.py` | ✅ PASSED | Runs via `python3 tests/test_case_setup.py` (uses `main()`) |
-
-### Key tests for coordinate preservation
-- `test_get_world_bounding_box_translated` — cube at (10,10,10) returns (9,9,9)→(11,11,11) ✅
-- `test_extract_box_coordinate_preservation` — same, verifying spec dict output ✅
-- `test_extract_geometry_multiple_boxes` — two boxes at different positions, both correct ✅
+| `test_vtk_importer_unit.py` (15 tests) | ✅ ALL PASSED | Face parsing (tris/quads/mixed/degenerate), file finding, PyVista sphere |
+| `test_lshaped_duct.py::test_lshaped_duct` | ✅ PASSED | 2-block merge |
+| `test_pyvista.py::test_pyvista_basic` | ✅ PASSED | PyVista 0.47.1 |
+| `test_subprocess_foam.py::test_blockmesh_subprocess` | ✅ PASSED | OF13 env injection |
+| `test_case_setup.py` | ✅ PASSED | Standalone (`python3 tests/test_case_setup.py`) |
 
 ### Known Warnings (non-blocking)
-- `nptyping` deprecation warnings for `np.bool8`, `np.object0`, etc. — cosmetic
+- `nptyping` deprecation warnings — cosmetic
 - `PytestReturnNotNoneWarning` in `test_subprocess_foam.py`
+- `PyVistaFutureWarning` for `extract_surface` algorithm default
 
 ---
 
@@ -136,7 +134,8 @@ import numpy; print(f"numpy {numpy.__version__}")
 ## Next Steps
 
 1. ~~**Implement `geometry_extractor.py`**~~ ✅ Done (Week 2)
-2. **Implement `vtk_importer.py`** (Week 3) — `load_vtk_as_blender_mesh()` still returns `None`
+2. ~~**Implement `vtk_importer.py`**~~ ✅ Done (Week 3)
 3. **Add grading properties to `properties.py`** (Week 5)
 4. **Add autosave properties and handler** (Weeks 5–6, 11)
-5. **End-to-end Blender integration test** — Requires steps 1 and 2 above
+5. **End-to-end Blender integration test** — Generate → blockMesh → VTK → Reload
+\n### Week 3 Integration Test\n\n- **Date:** 2026-03-21\n- **Status:** Complete\n- **Procedure:** Created default cube, tagged as box block (10x10x10 cells). Generated mesh -> Ran blockMesh -> Converted to VTK -> Reloaded.\n- **Result:** 'BlockMesh_Result' object appeared correctly with 1331 vertices and 1000 cells. Timing: ~2s for blockmesh, <1s for VTK conversion, ~1s for PyVista reload. No major issues found.\n

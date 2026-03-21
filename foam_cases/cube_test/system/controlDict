@@ -1,0 +1,34 @@
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+
+// OpenFOAM 13: foamRun replaces icoFoam, simpleFoam, etc.
+// The solver module is now specified inside a 'solvers' sub-dict.
+// For transient incompressible flow, the module is 'incompressibleFluid'.
+application     foamRun;
+
+solvers
+{
+    fluid
+{
+        solverincompressibleFluid;
+}
+}
+
+startFrom       startTime;
+startTime       0;
+stopAt          endTime;
+endTime         0.5;
+deltaT          0.005;
+writeControl    timeStep;
+writeInterval   20;
+purgeWrite      0;
+writeFormat     ascii;
+writePrecision  6;
+timeFormat      general;
+timePrecision   6;
+runTimeModifiable yes;

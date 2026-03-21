@@ -56,10 +56,10 @@ solvers
 startFrom       startTime;
 startTime       0;
 stopAt          endTime;
-endTime{end_time};
-deltaT{delta_t};
+endTime         {end_time};
+deltaT          {delta_t};
 writeControl    timeStep;
-writeInterval{write_interval};
+writeInterval   {write_interval};
 purgeWrite      0;
 writeFormat     ascii;
 writePrecision  6;

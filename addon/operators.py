@@ -1,6 +1,6 @@
 import os
 import bpy
-from . import mesh_builder, foam_runner, geometry_extractor, vtk_importer
+from . import mesh_builder, foam_runner, geometry_extractor, vtk_importer, case_setup
 
 
 class CLASSY_OT_generate_mesh(bpy.types.Operator):
@@ -38,9 +38,13 @@ class CLASSY_OT_generate_mesh(bpy.types.Operator):
             # Build the blockMeshDict
             mesh_builder.build_from_spec(spec, output_path)
 
+            # Setup the complete OpenFOAM case (controlDict, etc.)
+            patch_names = list(set([b.get("patch_name", "defaultWall") for b in spec["blocks"]]))
+            case_setup.setup_incompressible_case(case_path, patch_names)
+
             file_size = os.path.getsize(output_path)
             self.report({'INFO'},
-                        f"Generated: {output_path} ({file_size} bytes)")
+                        f"Generated blockMeshDict ({file_size} bytes) & Case Files")
             return {'FINISHED'}
 
         except Exception as e:
