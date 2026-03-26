@@ -1,33 +1,35 @@
-# addon/geometry_extractor.py
-# Extracts geometry from Blender objects and converts them into
-# a spec dict that mesh_builder.build_from_spec() can consume.
-#
-# This module is the bridge between Blender's 3D scene data and
-# classy_blocks' Python API. It reads Blender objects (cubes, extruded
-# faces, etc.), extracts their world-space coordinates and custom
-# properties (cell counts, patch names, block type), and packages
-# them into the spec dict format documented in mesh_builder.py.
-#
-# REQUIRES BLENDER PYTHON (bpy) — cannot be run standalone.
-#
-# SPEC DICT FORMAT (output of extract_geometry()):
-#   {
-#     "blocks": [
-#       {
-#         "type": "box",            # "box", "extrude", or "revolve"
-#         "name": "Cube",           # Blender object name
-#         "p_min": [x, y, z],       # minimum corner (world space)
-#         "p_max": [x, y, z],       # maximum corner (world space)
-#         "cells": [10, 10, 10],    # cell count per axis
-#         "grading": [1.0, 1.0, 1.0],  # expansion ratios
-#         "patch_name": "wall",     # boundary patch name
-#       },
-#       ...
-#     ],
-#     "merge_tolerance": 1e-4
-#   }
-#
-# CALLED BY: operators.py → CLASSY_OT_generate_mesh.execute()
+"""
+addon/geometry_extractor.py
+Extracts geometry from Blender objects and converts them into
+a spec dict that mesh_builder.build_from_spec() can consume.
+
+This module is the bridge between Blender's 3D scene data and
+classy_blocks' Python API. It reads Blender objects (cubes, extruded
+faces, etc.), extracts their world-space coordinates and custom
+properties (cell counts, patch names, block type), and packages
+them into the spec dict format documented in mesh_builder.py.
+
+REQUIRES BLENDER PYTHON (bpy) — cannot be run standalone.
+
+SPEC DICT FORMAT (output of extract_geometry()):
+  {
+    "blocks": [
+      {
+        "type": "box",            # "box", "extrude", or "revolve"
+        "name": "Cube",           # Blender object name
+        "p_min": [x, y, z],       # minimum corner (world space)
+        "p_max": [x, y, z],       # maximum corner (world space)
+        "cells": [10, 10, 10],    # cell count per axis
+        "grading": [1.0, 1.0, 1.0],  # expansion ratios
+        "patch_name": "wall",     # boundary patch name
+      },
+      ...
+    ],
+    "merge_tolerance": 1e-4
+  }
+
+CALLED BY: operators.py → CLASSY_OT_generate_mesh.execute()
+"""
 
 import bpy
 from mathutils import Vector

@@ -1,18 +1,20 @@
-# addon/vtk_importer.py
-# Reads VTK mesh files (produced by foamToVTK) and creates Blender mesh objects.
-#
-# This is Phase 7 of the pipeline: VTK → Blender mesh data.
-# After blockMesh creates the mesh and foamToVTK converts it to VTK format,
-# this module uses PyVista to read the VTK file and reconstruct the mesh
-# as a Blender object — completing the feedback loop.
-#
-# REQUIRES: pyvista (installed in Blender's Python)
-# REQUIRES: bpy (Blender Python — cannot be run standalone)
-#
-# DATA FLOW:
-#   foamToVTK → case_dir/VTK/*.vtk → [this module] → Blender mesh object
-#
-# CALLED BY: operators.py → CLASSY_OT_reload_mesh.execute()
+"""
+addon/vtk_importer.py
+Reads VTK mesh files (produced by foamToVTK) and creates Blender mesh objects.
+
+This is Phase 7 of the pipeline: VTK → Blender mesh data.
+After blockMesh creates the mesh and foamToVTK converts it to VTK format,
+this module uses PyVista to read the VTK file and reconstruct the mesh
+as a Blender object — completing the feedback loop.
+
+REQUIRES: pyvista (installed in Blender's Python)
+REQUIRES: bpy (Blender Python — cannot be run standalone)
+
+DATA FLOW:
+  foamToVTK → case_dir/VTK/*.vtk → [this module] → Blender mesh object
+
+CALLED BY: operators.py → CLASSY_OT_reload_mesh.execute()
+"""
 
 import os
 import glob

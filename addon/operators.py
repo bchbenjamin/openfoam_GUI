@@ -20,6 +20,14 @@ class CLASSY_OT_generate_mesh(bpy.types.Operator):
             return {'CANCELLED'}
 
         case_path = os.path.expanduser(case_path)
+        
+        # Verify case directory exists (or at least its parent if we are generating)
+        if not os.path.exists(os.path.dirname(case_path)):
+            self.report({'ERROR'},
+                        f"blockMeshDict generation failed: parent of case directory not found at "
+                        f"'{case_path}' — check the Case Directory field")
+            return {'CANCELLED'}
+
         output_path = os.path.join(case_path, "system", "blockMeshDict")
 
         try:
@@ -72,6 +80,12 @@ class CLASSY_OT_run_blockmesh(bpy.types.Operator):
 
         case_path = os.path.expanduser(case_path)
 
+        if not os.path.isdir(case_path):
+            self.report({'ERROR'},
+                        f"blockMesh failed: case directory not found at "
+                        f"'{case_path}' — check the Case Directory field")
+            return {'CANCELLED'}
+
         try:
             returncode, stdout, stderr = foam_runner.run_blockmesh(
                 case_path, bashrc_path
@@ -92,9 +106,11 @@ class CLASSY_OT_run_blockmesh(bpy.types.Operator):
                     quality_str += f" | Skewness: {skewness:.2f}"
 
                 if quality_str:
+                    context.scene["classy_last_mesh_quality"] = quality_str
                     self.report({'INFO'},
                                 f"blockMesh completed — {quality_str}")
                 else:
+                    context.scene["classy_last_mesh_quality"] = "OK"
                     self.report({'INFO'},
                                 "blockMesh completed successfully")
                 return {'FINISHED'}
@@ -133,6 +149,12 @@ class CLASSY_OT_convert_vtk(bpy.types.Operator):
             return {'CANCELLED'}
 
         case_path = os.path.expanduser(case_path)
+
+        if not os.path.isdir(case_path):
+            self.report({'ERROR'},
+                        f"foamToVTK failed: case directory not found at "
+                        f"'{case_path}' — check the Case Directory field")
+            return {'CANCELLED'}
 
         # Check that blockMesh has been run first
         poly_mesh = os.path.join(case_path, "constant", "polyMesh")
@@ -187,6 +209,12 @@ class CLASSY_OT_reload_mesh(bpy.types.Operator):
             return {'CANCELLED'}
 
         case_path = os.path.expanduser(case_path)
+
+        if not os.path.isdir(case_path):
+            self.report({'ERROR'},
+                        f"Mesh reload failed: case directory not found at "
+                        f"'{case_path}' — check the Case Directory field")
+            return {'CANCELLED'}
 
         try:
             vtk_files = vtk_importer.find_vtk_files(case_path)
