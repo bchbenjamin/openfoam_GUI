@@ -25,6 +25,39 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                 layout.prop(props, "cells")
                 layout.prop(props, "patch_name")
 
+                # --- Grading controls ---
+                layout.separator()
+                layout.label(text="Grading")
+                layout.prop(props, "grading_type")
+                if props.grading_type == "RATIO":
+                    layout.prop(props, "grading")
+                elif props.grading_type == "START_SIZE":
+                    layout.prop(props, "start_size")
+                elif props.grading_type == "SYMMETRIC":
+                    layout.prop(props, "start_size")
+                    layout.prop(props, "end_size")
+
+                # --- STL Projection controls ---
+                if props.block_type == "box":
+                    layout.separator()
+                    layout.label(text="STL Projection (optional)")
+                    layout.prop(props, "stl_projection_face")
+                    layout.prop(props, "stl_file")
+
+        # --- Auto-Update Mesh controls ---
+        layout.separator()
+        layout.label(text="Auto-Update Mesh")
+        layout.prop(scene_props, "use_auto_update")
+        if scene_props.use_auto_update:
+            layout.prop(scene_props, "auto_update_limit")
+            layout.prop(scene_props, "auto_update_delay")
+
+        # --- Mesh quality display ---
+        quality = context.scene.get("classy_last_mesh_quality")
+        if quality:
+            layout.separator()
+            layout.label(text=f"Last Quality: {quality}", icon='CHECKMARK')
+
         layout.separator()
         layout.operator("classy.generate_mesh", text="1. Generate blockMeshDict")
         layout.operator("classy.run_blockmesh", text="2. Run blockMesh")

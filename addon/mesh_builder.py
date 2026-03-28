@@ -1,30 +1,68 @@
-# addon/mesh_builder.py
-# Calls classy_blocks API to build blockMeshDict from a geometry spec dict.
-# No Blender imports — fully testable with plain Python/pytest.
-#
-# CRITICAL APINOTE:
-#   CORRECT:   mesh.add(block)      ← always use this
-#   WRONG:     mesh.merge(block)    ← does NOT exist in classy_blocks 1.x
-#
-# HOW THE SPEC DICT WORKS:
-#   spec = {
-#     "blocks": [
-#       {
-#         "type": "box",            # "box", "extrude", or "revolve"
-#         "name": "main_block",     # for logging
-#         "p_min": [0, 0, 0],       # (box only) minimum corner
-#         "p_max": [1, 1, 1],       # (box only) maximum corner
-#         "cells": [10, 10, 10],    # cell count per axis direction
-#         "grading": [1.0, 1.0, 1.0], # c2c expansion ratio per direction (1.0 = uniform)
-#       }
-#     ],
-#     "merge_tolerance": 1e-4       # vertices closer than this are merged
-#   }
+"""
+addon/mesh_builder.py
+Calls classy_blocks API to build blockMeshDict from a geometry spec dict.
+No Blender imports — fully testable with plain Python/pytest.
+
+CRITICAL API NOTE:
+  CORRECT:   mesh.add(block)      ← always use this
+  WRONG:     mesh.merge(block)    ← does NOT exist in classy_blocks 1.x
+
+HOW THE SPEC DICT WORKS:
+  spec = {
+    "blocks": [
+      {
+        "type": "box",            # "box", "extrude", or "revolve"
+        "name": "main_block",     # for logging
+        "p_min": [0, 0, 0],       # (box only) minimum corner
+        "p_max": [1, 1, 1],       # (box only) maximum corner
+        "cells": [10, 10, 10],    # cell count per axis direction
+        "grading": [1.0, 1.0, 1.0], # c2c expansion ratio per direction (1.0 = uniform)
+        "grading_type": "RATIO",  # "RATIO", "START_SIZE", or "SYMMETRIC"
+        "start_size": 1e-4,       # first cell size (used when grading_type != RATIO)
+        "end_size": 1e-4,         # last cell size (used when grading_type == SYMMETRIC)
+      }
+    ],
+    "merge_tolerance": 1e-4       # vertices closer than this are merged
+  }
+
+CALLED BY: operators.py → CLASSY_OT_generate_mesh.execute()
+"""
 
 import os
 import math
 import classy_blocks as cb
 from typing import Dict, Any
+
+
+def _apply_chops(block, spec: Dict[str, Any]) -> None:
+    """
+    Applies cell chopping (count + grading) to a block in all 3 axes.
+
+    Dispatches by grading_type:
+      - RATIO:      use c2c_expansion from spec["grading"]
+      - START_SIZE:  use start_size (first cell width)
+      - SYMMETRIC:   use start_size + end_size (first and last cell width)
+
+    This is shared by all block types (box, extrude, revolve).
+    """
+    grading_type = spec.get("grading_type", "RATIO")
+    cells = spec["cells"]
+    grading = spec.get("grading", [1.0, 1.0, 1.0])
+    start_size = spec.get("start_size", 1e-4)
+    end_size = spec.get("end_size", 1e-4)
+
+    for axis in range(3):
+        if grading_type == "START_SIZE":
+            # 2 params: count + start_size
+            block.chop(axis, count=cells[axis], start_size=start_size)
+        elif grading_type == "SYMMETRIC":
+            # 2 params: start_size + end_size (count is auto-computed)
+            block.chop(axis, start_size=start_size, end_size=end_size)
+        else:
+            # RATIO (default) — 2 params: count + c2c_expansion
+            block.chop(axis, count=cells[axis],
+                       c2c_expansion=grading[axis])
+
 
 def build_box_block(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     """
@@ -34,16 +72,20 @@ def build_box_block(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
       p_min — [x, y, z] of the bottom-left-back corner
       p_max — [x, y, z] of the top-right-front corner
 
-    .chop(direction, count, c2c_expansion):
-      direction 0 = x, 1 = y, 2 = z
-      c2c_expansion = 1.0 means uniform cells; >1.0 means cells grow in that direction
+    Grading is applied via _apply_chops() based on spec["grading_type"].
     """
     box = cb.Box(spec["p_min"], spec["p_max"])
-    box.chop(0, count=spec["cells"][0], c2c_expansion=spec["grading"][0])
-    box.chop(1, count=spec["cells"][1], c2c_expansion=spec["grading"][1])
-    box.chop(2, count=spec["cells"][2], c2c_expansion=spec["grading"][2])
+    _apply_chops(box, spec)
+
+    # Apply STL projections if specified
+    stl_projections = spec.get("stl_projections", {})
+    for face_name, stl_name in stl_projections.items():
+        box.project_face(face_name, stl_name)
+        print(f"[classy_blocks]   Projecting face '{face_name}' onto '{stl_name}'")
+
     # CORRECT: mesh.add() — NOT mesh.merge()
     mesh.add(box)
+
 
 def build_extrude_block(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     """
@@ -54,10 +96,9 @@ def build_extrude_block(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     """
     face = cb.Face(spec["face"])
     extrude = cb.Extrude(face, spec["extrude_vector"])
-    extrude.chop(0, count=spec["cells"][0], c2c_expansion=spec["grading"][0])
-    extrude.chop(1, count=spec["cells"][1], c2c_expansion=spec["grading"][1])
-    extrude.chop(2, count=spec["cells"][2], c2c_expansion=spec["grading"][2])
+    _apply_chops(extrude, spec)
     mesh.add(extrude)
+
 
 def build_revolve_block(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     """
@@ -76,10 +117,9 @@ def build_revolve_block(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
         spec["axis"],
         spec["origin"],
     )
-    revolve.chop(0, count=spec["cells"][0], c2c_expansion=spec["grading"][0])
-    revolve.chop(1, count=spec["cells"][1], c2c_expansion=spec["grading"][1])
-    revolve.chop(2, count=spec["cells"][2], c2c_expansion=spec["grading"][2])
+    _apply_chops(revolve, spec)
     mesh.add(revolve)
+
 
 def build_from_spec(spec: Dict[str, Any], output_path: str) -> None:
     """
@@ -104,7 +144,9 @@ def build_from_spec(spec: Dict[str, Any], output_path: str) -> None:
     for block_spec in spec["blocks"]:
         block_type = block_spec["type"]
         block_name = block_spec.get("name", "unnamed")
-        print(f"Building{block_type} block: '{block_name}'")
+        grading_type = block_spec.get("grading_type", "RATIO")
+        print(f"[classy_blocks] Building {block_type} block: '{block_name}' "
+              f"(grading: {grading_type})")
 
         if block_type == "box":
             build_box_block(mesh, block_spec)
@@ -117,37 +159,5 @@ def build_from_spec(spec: Dict[str, Any], output_path: str) -> None:
 
     # mesh.write() performs vertex merging (within tolerance), assigns global
     # vertex indices, and writes the blockMeshDict file.
-    # tolerance = spec.get("merge_tolerance", 1e-4)
-    mesh.write(output_path)#, tolerance=tolerance)
-    print(f"Written blockMeshDict:{output_path} ({os.path.getsize(output_path)} bytes)")
-
-# ADVANCED FEATURES
-# In build_box_block(), after creating the box:
-# If the block spec has an stl_projection key, project faces onto it.
-
-def build_box_block_with_stl(mesh, spec):
-    """
-    Builds a Box block and optionally projects specified faces onto an STL.
-
-    spec format:
-    {
-        ...normal box spec...,
-        "stl_projections": {
-            "top": "terrain.stl",   # face name → STL filename in triSurface/
-            "front": "wall.stl",
-        }
-    }
-    """
-    box = cb.Box(spec["p_min"], spec["p_max"])
-    box.chop(0, count=spec["cells"][0], c2c_expansion=spec["grading"][0])
-    box.chop(1, count=spec["cells"][1], c2c_expansion=spec["grading"][1])
-    box.chop(2, count=spec["cells"][2], c2c_expansion=spec["grading"][2])
-
-    # Apply STL projections if specified
-    stl_projections = spec.get("stl_projections", {})
-    for face_name, stl_name in stl_projections.items():
-        # project_face tells blockMesh to snap this face's vertices to the STL
-        box.project_face(face_name, stl_name)
-        print(f"  Projecting face '{face_name}' onto '{stl_name}'")
-
-    mesh.add(box)
+    mesh.write(output_path)
+    print(f"[classy_blocks] Written blockMeshDict:{output_path} ({os.path.getsize(output_path)} bytes)")

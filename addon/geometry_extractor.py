@@ -80,14 +80,27 @@ def extract_geometry(context):
 
         patch_name = getattr(props, "patch_name", "defaultWall") or "defaultWall"
 
+        # Read grading type and size parameters
+        grading_type = getattr(props, "grading_type", "RATIO")
+        start_size = getattr(props, "start_size", 1e-4)
+        end_size = getattr(props, "end_size", 1e-4)
+
+        # Read STL projection (only relevant for box blocks)
+        stl_file = getattr(props, "stl_file", "") or ""
+        stl_projection_face = getattr(props, "stl_projection_face", "top")
+
         # Dispatch by block type
         try:
             if block_type == "box":
-                block_spec = _extract_box(obj, cells, grading, patch_name)
+                block_spec = _extract_box(obj, cells, grading, patch_name,
+                                          grading_type, start_size, end_size,
+                                          stl_file, stl_projection_face)
             elif block_type == "extrude":
-                block_spec = _extract_extrude(obj, props, cells, grading, patch_name)
+                block_spec = _extract_extrude(obj, props, cells, grading, patch_name,
+                                              grading_type, start_size, end_size)
             elif block_type == "revolve":
-                block_spec = _extract_revolve(obj, props, cells, grading, patch_name)
+                block_spec = _extract_revolve(obj, props, cells, grading, patch_name,
+                                              grading_type, start_size, end_size)
             else:
                 print(f"[classy_blocks] WARNING: Unknown block_type "
                       f"'{block_type}' on '{obj.name}' — skipping")
@@ -133,7 +146,9 @@ def _get_world_bounding_box(obj):
     return (p_min, p_max)
 
 
-def _extract_box(obj, cells, grading, patch_name):
+def _extract_box(obj, cells, grading, patch_name,
+                 grading_type="RATIO", start_size=1e-4, end_size=1e-4,
+                 stl_file="", stl_projection_face="top"):
     """
     Extracts a box block spec from a Blender object using its
     world-space bounding box.
@@ -143,21 +158,38 @@ def _extract_box(obj, cells, grading, patch_name):
         cells: [nx, ny, nz] cell counts.
         grading: [gx, gy, gz] expansion ratios.
         patch_name: Boundary patch name string.
+        grading_type: "RATIO", "START_SIZE", or "SYMMETRIC".
+        start_size: First cell size in meters.
+        end_size: Last cell size in meters.
+        stl_file: Path to an STL file for face projection.
+        stl_projection_face: Which face to project onto the STL.
 
     Returns:
-        dict: Block spec dict with type, name, p_min, p_max, cells, grading, patch_name.
+        dict: Block spec dict.
     """
     p_min, p_max = _get_world_bounding_box(obj)
 
-    return {
+    spec = {
         "type": "box",
         "name": obj.name,
         "p_min": p_min,
         "p_max": p_max,
         "cells": cells,
         "grading": grading,
+        "grading_type": grading_type,
+        "start_size": float(start_size),
+        "end_size": float(end_size),
         "patch_name": patch_name,
     }
+
+    # Add STL projection if an STL file is set
+    if stl_file:
+        import os
+        spec["stl_projections"] = {
+            stl_projection_face: os.path.basename(stl_file)
+        }
+
+    return spec
 
 
 def _extract_face_vertices(obj, face_index=0):
@@ -209,7 +241,8 @@ def _extract_face_vertices(obj, face_index=0):
         eval_obj.to_mesh_clear()
 
 
-def _extract_extrude(obj, props, cells, grading, patch_name) -> dict:
+def _extract_extrude(obj, props, cells, grading, patch_name,
+                     grading_type="RATIO", start_size=1e-4, end_size=1e-4) -> dict:
     """
     Extracts an extrude block spec from a Blender object.
 
@@ -224,10 +257,12 @@ def _extract_extrude(obj, props, cells, grading, patch_name) -> dict:
         cells: [nx, ny, nz] cell counts.
         grading: [gx, gy, gz] expansion ratios.
         patch_name: Boundary patch name string.
+        grading_type: "RATIO", "START_SIZE", or "SYMMETRIC".
+        start_size: First cell size in meters.
+        end_size: Last cell size in meters.
 
     Returns:
-        dict: Block spec dict with type, name, face, extrude_vector, cells,
-              grading, patch_name.
+        dict: Block spec dict.
     """
     face_index = getattr(props, "extrude_face_index", 0) or 0
     face_verts = _extract_face_vertices(obj, face_index)
@@ -256,11 +291,15 @@ def _extract_extrude(obj, props, cells, grading, patch_name) -> dict:
         "extrude_vector": extrude_vector,
         "cells": cells,
         "grading": grading,
+        "grading_type": grading_type,
+        "start_size": float(start_size),
+        "end_size": float(end_size),
         "patch_name": patch_name,
     }
 
 
-def _extract_revolve(obj, props, cells, grading, patch_name) -> dict:
+def _extract_revolve(obj, props, cells, grading, patch_name,
+                     grading_type="RATIO", start_size=1e-4, end_size=1e-4) -> dict:
     """
     Extracts a revolve block spec from a Blender object.
 
@@ -273,10 +312,12 @@ def _extract_revolve(obj, props, cells, grading, patch_name) -> dict:
         cells: [nx, ny, nz] cell counts.
         grading: [gx, gy, gz] expansion ratios.
         patch_name: Boundary patch name string.
+        grading_type: "RATIO", "START_SIZE", or "SYMMETRIC".
+        start_size: First cell size in meters.
+        end_size: Last cell size in meters.
 
     Returns:
-        dict: Block spec dict with type, name, face, angle, axis,
-              origin, cells, grading, patch_name.
+        dict: Block spec dict.
     """
     face_index = getattr(props, "revolve_face_index", 0) or 0
     face_verts = _extract_face_vertices(obj, face_index)
@@ -307,5 +348,8 @@ def _extract_revolve(obj, props, cells, grading, patch_name) -> dict:
         "origin": origin,
         "cells": cells,
         "grading": grading,
+        "grading_type": grading_type,
+        "start_size": float(start_size),
+        "end_size": float(end_size),
         "patch_name": patch_name,
     }
