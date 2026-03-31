@@ -48,21 +48,29 @@ class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
 
 
 class ClassyMeshSceneProperties(bpy.types.PropertyGroup):
-    case_path: bpy.props.StringProperty(name="Case Directory", subtype='DIR_PATH')
-    bashrc_path: bpy.props.StringProperty(name="OpenFOAM bashrc", default="/opt/openfoam13/etc/bashrc", subtype='FILE_PATH')
+    case_path: bpy.props.StringProperty(
+        name="Case Directory", 
+        default="~/foam_cases/default_case/",
+        subtype='DIR_PATH'
+    )
 
-    # --- Auto-Update Mesh properties (Week 5) ---
+    # --- Auto-Update Mesh properties (Week 5/6) ---
     use_auto_update: bpy.props.BoolProperty(
         name="Auto-Update Mesh",
         default=True,
         description="Automatically mesh and reload on change if small project",
     )
-    auto_update_limit: bpy.props.IntProperty(
-        name="Update Block Limit",
-        default=50,
-        description="Disable auto-update if block/cell threshold passed",
+
+    # --- Status properties (Week 6) ---
+    pipeline_status: bpy.props.StringProperty(
+        name="Status",
+        default="Ready"
     )
-    auto_update_delay: bpy.props.FloatProperty(
-        name="Update Delay (s)",
-        default=2.0, min=0.5, max=10.0,
+    last_mesh_quality: bpy.props.StringProperty(
+        name="Last Quality",
+        default=""
+    )
+    last_mesh_quality_icon: bpy.props.StringProperty(
+        name="Last Quality Icon",
+        default="INFO"
     )
