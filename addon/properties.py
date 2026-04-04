@@ -9,7 +9,7 @@ class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
     cells: bpy.props.IntVectorProperty(name="Cells X/Y/Z", default=(10, 10, 10), min=1)
     patch_name: bpy.props.StringProperty(name="Patch Name", default="defaultWall")
 
-    # --- Grading properties (Week 5) ---
+    # --- Grading properties ---
     grading_type: bpy.props.EnumProperty(
         name="Grading Type",
         items=[
@@ -32,7 +32,7 @@ class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
         default=1e-4, min=1e-10, precision=8,
     )
 
-    # --- STL Projection properties (Week 5) ---
+    # --- STL Projection properties ---
     stl_projection_face: bpy.props.EnumProperty(
         name="Project Face",
         items=[
@@ -54,14 +54,14 @@ class ClassyMeshSceneProperties(bpy.types.PropertyGroup):
         subtype='DIR_PATH'
     )
 
-    # --- Auto-Update Mesh properties (Week 5/6) ---
+    # --- Auto-Update Mesh properties ---
     use_auto_update: bpy.props.BoolProperty(
         name="Auto-Update Mesh",
         default=True,
         description="Automatically mesh and reload on change if small project",
     )
 
-    # --- Status properties (Week 6) ---
+    # --- Status properties ---
     pipeline_status: bpy.props.StringProperty(
         name="Status",
         default="Ready"

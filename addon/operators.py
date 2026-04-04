@@ -293,10 +293,10 @@ class CLASSY_OT_reload_mesh(bpy.types.Operator):
             return {'CANCELLED'}
 
 class MESH_OT_export_terrain_stl(bpy.types.Operator):
-    """(Week 7 feature placeholder) Export selected mesh as STL for terrain projection"""
+    """(Feature placeholder) Export selected mesh as STL for terrain projection"""
     bl_idname = "mesh.classy_export_terrain"
     bl_label = "Export as Terrain STL"
 
     def execute(self, context):
-        self.report({'INFO'}, "Terrain export will be implemented in Week 7!")
+        self.report({'INFO'}, "Terrain export is a placeholder, the actual implementation will be built soon.")
         return {'FINISHED'}
