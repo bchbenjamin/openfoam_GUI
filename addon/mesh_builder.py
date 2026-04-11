@@ -77,13 +77,24 @@ def build_box_block(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     box = cb.Box(spec["p_min"], spec["p_max"])
     _apply_chops(box, spec)
 
+    # CORRECT: mesh.add() — NOT mesh.merge()
+    mesh.add(box)
+
+
+def build_box_block_with_stl(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
+    """
+    Adds a rectangular Box block to the mesh, and projects specified faces
+    onto STL geometries.
+    """
+    box = cb.Box(spec["p_min"], spec["p_max"])
+    _apply_chops(box, spec)
+
     # Apply STL projections if specified
     stl_projections = spec.get("stl_projections", {})
     for face_name, stl_name in stl_projections.items():
-        box.project_face(face_name, stl_name)
+        box.project_side(face_name, stl_name)
         print(f"[classy_blocks]   Projecting face '{face_name}' onto '{stl_name}'")
 
-    # CORRECT: mesh.add() — NOT mesh.merge()
     mesh.add(box)
 
 
@@ -149,7 +160,10 @@ def build_from_spec(spec: Dict[str, Any], output_path: str) -> None:
               f"(grading: {grading_type})")
 
         if block_type == "box":
-            build_box_block(mesh, block_spec)
+            if block_spec.get("stl_projections"):
+                build_box_block_with_stl(mesh, block_spec)
+            else:
+                build_box_block(mesh, block_spec)
         elif block_type == "extrude":
             build_extrude_block(mesh, block_spec)
         elif block_type == "revolve":

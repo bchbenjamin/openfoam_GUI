@@ -298,5 +298,22 @@ class MESH_OT_export_terrain_stl(bpy.types.Operator):
     bl_label = "Export as Terrain STL"
 
     def execute(self, context):
-        self.report({'INFO'}, "Terrain export is a placeholder, the actual implementation will be built soon.")
-        return {'FINISHED'}
+        scene_props = context.scene.classy_mesh_props
+        case_path = scene_props.case_path
+
+        if not case_path:
+            self.report({'ERROR'}, "Case directory is not set")
+            return {'CANCELLED'}
+
+        case_path = os.path.expanduser(case_path)
+        stl_dir = os.path.join(case_path, "constant", "triSurface")
+        os.makedirs(stl_dir, exist_ok=True)
+        stl_path = os.path.join(stl_dir, "terrain.stl")
+
+        try:
+            bpy.ops.wm.stl_export(filepath=stl_path, export_selected_objects=True)
+            self.report({'INFO'}, f"Terrain STL exported to {stl_path}")
+            return {'FINISHED'}
+        except Exception as e:
+            self.report({'ERROR'}, f"Failed to export terrain STL: {str(e)}")
+            return {'CANCELLED'}

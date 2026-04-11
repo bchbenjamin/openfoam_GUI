@@ -138,4 +138,13 @@ import numpy; print(f"numpy {numpy.__version__}")
 3. **Add grading properties to `properties.py`** (Week 5)
 4. **Add autosave properties and handler** (Weeks 5–6, 11)
 5. **End-to-end Blender integration test** — Generate → blockMesh → VTK → Reload
-\n### Week 3 Integration Test\n\n- **Date:** 2026-03-21\n- **Status:** Complete\n- **Procedure:** Created default cube, tagged as box block (10x10x10 cells). Generated mesh -> Ran blockMesh -> Converted to VTK -> Reloaded.\n- **Result:** 'BlockMesh_Result' object appeared correctly with 1331 vertices and 1000 cells. Timing: ~2s for blockmesh, <1s for VTK conversion, ~1s for PyVista reload. No major issues found.\n
+\n### Week 3 Integration Test
+- **Date:** 2026-03-21
+- **Status:** Complete
+- **Procedure:** Created default cube, tagged as box block (10x10x10 cells). Generated mesh -> Ran blockMesh -> Converted to VTK -> Reloaded.
+- **Result:** 'BlockMesh_Result' object appeared correctly with 1331 vertices and 1000 cells. Timing: ~2s for blockmesh, <1s for VTK conversion, ~1s for PyVista reload. No major issues found.
+
+### STL Projection Face Names
+For `cb.Box` the valid face/side names used by `project_side()` are:
+`'bottom', 'top', 'front', 'back', 'left', 'right'`.
+Ensure that Blender properties pass one of these strings.
