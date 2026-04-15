@@ -52,42 +52,43 @@ def extract_geometry(context):
     blocks = []
 
     for obj in context.scene.objects:
-        # Skip non-mesh objects and objects not tagged as blocks
+        # Skip non-mesh objects
         if obj.type != 'MESH':
             continue
 
         props = getattr(obj, "classy_block_props", None)
-        if props is None:
-            continue
-        if not getattr(props, "is_block", False):
+        
+        # Check exclusion toggle
+        if props and getattr(props, "exclude_from_mesh", False):
             continue
 
-        block_type = getattr(props, "block_type", "box")
+        block_type = getattr(props, "block_type", "box") if props else "box"
 
         # Read cells with safe access — ensure 3-element list
-        raw_cells = getattr(props, "cells", None)
+        raw_cells = getattr(props, "cells", None) if props else None
         if raw_cells is not None and len(raw_cells) >= 3:
             cells = [max(1, int(raw_cells[i])) for i in range(3)]
         else:
             cells = [10, 10, 10]
 
         # Read grading with safe access — default to uniform
-        raw_grading = getattr(props, "grading", None)
+        raw_grading = getattr(props, "grading", None) if props else None
         if raw_grading is not None and len(raw_grading) >= 3:
             grading = [float(raw_grading[i]) for i in range(3)]
         else:
             grading = [1.0, 1.0, 1.0]
 
-        patch_name = getattr(props, "patch_name", "defaultWall") or "defaultWall"
+        patch_name = getattr(props, "patch_name", "defaultWall") if props else "defaultWall"
+        patch_name = patch_name or "defaultWall"
 
         # Read grading type and size parameters
-        grading_type = getattr(props, "grading_type", "RATIO")
-        start_size = getattr(props, "start_size", 1e-4)
-        end_size = getattr(props, "end_size", 1e-4)
+        grading_type = getattr(props, "grading_type", "RATIO") if props else "RATIO"
+        start_size = getattr(props, "start_size", 1e-4) if props else 1e-4
+        end_size = getattr(props, "end_size", 1e-4) if props else 1e-4
 
         # Read STL projection (only relevant for box blocks)
-        stl_file = getattr(props, "stl_file", "") or ""
-        stl_projection_face = getattr(props, "stl_projection_face", "top")
+        stl_file = getattr(props, "stl_file", "") if props else ""
+        stl_projection_face = getattr(props, "stl_projection_face", "top") if props else "top"
 
         # Dispatch by block type
         try:

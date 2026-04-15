@@ -10,7 +10,6 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         scene_props = context.scene.classy_mesh_props
-        obj = context.active_object
 
         # --- Pipeline Status Header ---
         if scene_props.pipeline_status != "Ready":
@@ -20,14 +19,27 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
         layout.label(text="Case Settings")
         layout.prop(scene_props, "case_path")
 
-        if obj:
+        # --- Scene-wide block count summary ---
+        mesh_objects = [o for o in context.scene.objects if o.type == 'MESH']
+        excluded = sum(1 for o in mesh_objects if getattr(o, "classy_block_props", None) and o.classy_block_props.exclude_from_mesh)
+        active_blocks = len(mesh_objects) - excluded
+        layout.label(text=f"Mesh Objects: {active_blocks} blocks ({excluded} excluded)", icon='MESH_CUBE')
+
+        # --- Per-object settings (shown for active selection) ---
+        obj = context.active_object
+        if obj and obj.type == 'MESH':
             layout.separator()
             props = obj.classy_block_props
-            layout.prop(props, "is_block", text=f"Tag '{obj.name}' as Block")
-            if props.is_block:
-                layout.prop(props, "block_type")
-                layout.prop(props, "cells")
-                layout.prop(props, "patch_name")
+
+            # Exclusion toggle — replaces the old "tag as block"
+            header_box = layout.box()
+            row = header_box.row()
+            row.prop(props, "exclude_from_mesh", text=f"Exclude '{obj.name}'", icon='CANCEL' if props.exclude_from_mesh else 'CHECKMARK')
+
+            if not props.exclude_from_mesh:
+                header_box.prop(props, "block_type")
+                header_box.prop(props, "cells")
+                header_box.prop(props, "patch_name")
 
                 # --- Grading controls ---
                 layout.separator()
@@ -64,8 +76,7 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
         
         if scene_props.use_auto_update:
             prefs = context.preferences.addons[__package__].preferences
-            blocks_count = sum(1 for o in context.scene.objects if getattr(o, "classy_block_props", None) and o.classy_block_props.is_block)
-            if blocks_count > prefs.auto_update_limit:
+            if active_blocks > prefs.auto_update_limit:
                 layout.label(text=f"Disabled: Project too large (> {prefs.auto_update_limit} blocks)", icon='ERROR')
 
         # --- Mesh quality display ---

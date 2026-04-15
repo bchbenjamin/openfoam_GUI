@@ -1,7 +1,7 @@
 import bpy
 
 class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
-    is_block: bpy.props.BoolProperty(name="Is Mesh Block", default=False)
+    exclude_from_mesh: bpy.props.BoolProperty(name="Exclude from Mesh", default=False)
     block_type: bpy.props.EnumProperty(
         name="Block Type",
         items=[("box", "Box", ""), ("extrude", "Extrude", ""), ("revolve", "Revolve", "")]
