@@ -65,6 +65,7 @@ def build_block(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     # Self-projection: project all 6 faces onto the object's own STL
     if needs_projection and stl_name:
         print(f"[classy_blocks]   Projecting ALL 6 faces onto '{stl_name}'")
+        mesh.add_geometry({stl_name: ['type triSurfaceMesh', f'file "{stl_name}"']})
         for face in ALL_FACES:
             box.project_side(face, stl_name)
             print(f"[classy_blocks]     → projected '{face}'")
@@ -72,6 +73,7 @@ def build_block(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     # User-specified STL projection (from UI, e.g., terrain)
     user_projections = spec.get("stl_projections", {})
     for face_name, user_stl in user_projections.items():
+        mesh.add_geometry({user_stl: ['type triSurfaceMesh', f'file "{user_stl}"']})
         box.project_side(face_name, user_stl)
         print(f"[classy_blocks]   User projection: '{face_name}' → '{user_stl}'")
 
