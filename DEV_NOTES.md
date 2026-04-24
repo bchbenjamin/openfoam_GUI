@@ -144,19 +144,21 @@ import numpy; print(f"numpy {numpy.__version__}")
 - **Procedure:** Created default cube, tagged as box block (10x10x10 cells). Generated mesh -> Ran blockMesh -> Converted to VTK -> Reloaded.
 - **Result:** 'BlockMesh_Result' object appeared correctly with 1331 vertices and 1000 cells. Timing: ~2s for blockmesh, <1s for VTK conversion, ~1s for PyVista reload. No major issues found.
 
-### Universal Shape Support (STL Self-Projection)
-All mesh objects are automatically treated as blocks (opt-out via `exclude_from_mesh`).
-**Every object uses the same pipeline — no shape detection or classification.**
+### Structured Primitive Support (Week 7 refresh)
+All mesh objects are still auto-included by default (opt-out via `exclude_from_mesh`), but the routing is now typed instead of blind.
 
-How it works:
-1. Every object → `cb.Box(p_min, p_max)` from its bounding box
-2. If the object is a plain box (8 verts, 6 quad faces): no projection needed
-3. If the object is anything else (cylinder, sphere, monkey, etc.):
-   - Export the object as STL to `<case>/constant/triSurface/<name>.stl`
-   - Project all 6 box faces onto the STL via `box.project_side(face, stl_name)`
-   - blockMesh deforms the hex vertices to follow the original geometry
+How it works now:
+1. `geometry_extractor.py` classifies standard primitives with heuristics + PyVista validation.
+2. Supported structured outputs:
+   - `box` → `cb.Box(...)`
+   - `cylinder` → `cb.Cylinder(...)`
+   - `sphere` → two `cb.Hemisphere(...)` shapes
+   - planar round profiles → thin structured `disk`
+3. Unsupported / unstructured meshes are not fatal:
+   - the Blender object stays in the scene
+   - generation continues
+   - a small warning is shown in the UI / operator status
+4. User-driven terrain projection still exists for boxes through `project_side(...)`.
 
 **Valid face names for `project_side()`**:
 `'bottom', 'top', 'front', 'back', 'left', 'right'`
-
-**Box detection** (`_is_box_shaped`): 8 vertices + 6 quad faces = skip projection.

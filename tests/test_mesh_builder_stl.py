@@ -3,6 +3,9 @@
 import pytest
 import os
 import importlib.util
+
+os.environ.setdefault("NUMBA_DISABLE_JIT", "1")
+
 import classy_blocks as cb
 
 _mb_path = os.path.join(os.path.dirname(__file__), "..", "addon", "mesh_builder.py")
@@ -57,6 +60,136 @@ def test_build_extrude():
     _mb.build_block(mesh, spec)
 
 
+def test_build_cylinder():
+    """A cylinder block builds correctly (O-grid, 12 hex blocks)."""
+    mesh = cb.Mesh()
+    spec = {
+        "type": "cylinder",
+        "name": "test_cylinder",
+        "axis_pt1": [0, 0, 0],
+        "axis_pt2": [0, 0, 2],
+        "radius_point": [1, 0, 0],
+        "radius": 1.0,
+        "cells": [5, 5, 10],
+        "grading_type": "RATIO",
+        "grading": [1.0, 1.0, 1.0],
+    }
+    _mb.build_block(mesh, spec)
+
+
+def test_build_sphere():
+    """A sphere block builds correctly from two hemispheres."""
+    mesh = cb.Mesh()
+    spec = {
+        "type": "sphere",
+        "name": "test_sphere",
+        "center": [0, 0, 0],
+        "radius_point": [1, 0, 0],
+        "radius": 1.0,
+        "cells": [5, 8, 5],
+        "grading_type": "RATIO",
+        "grading": [1.0, 1.0, 1.0],
+    }
+    assert _mb.build_block(mesh, spec) is True
+
+
+def test_build_disk():
+    """A planar circle-like input builds as a thin structured disk."""
+    mesh = cb.Mesh()
+    spec = {
+        "type": "disk",
+        "name": "test_disk",
+        "center": [0, 0, 0],
+        "radius_point": [1, 0, 0],
+        "normal": [0, 0, 1],
+        "thickness": 0.01,
+        "cells": [5, 8, 1],
+        "grading_type": "RATIO",
+        "grading": [1.0, 1.0, 1.0],
+    }
+    assert _mb.build_block(mesh, spec) is True
+
+
+def test_build_cylinder_end_to_end(tmp_path):
+    """Full spec → blockMeshDict for a cylinder."""
+    output_path = tmp_path / "system" / "blockMeshDict"
+    os.makedirs(output_path.parent, exist_ok=True)
+
+    spec = {
+        "blocks": [{
+            "type": "cylinder",
+            "name": "test_cylinder",
+            "axis_pt1": [0, 0, 0],
+            "axis_pt2": [0, 0, 2],
+            "radius_point": [1, 0, 0],
+            "radius": 1.0,
+            "cells": [5, 5, 10],
+            "grading_type": "RATIO",
+            "grading": [1.0, 1.0, 1.0],
+        }],
+        "merge_tolerance": 1e-4
+    }
+
+    _mb.build_from_spec(spec, str(output_path))
+    assert output_path.exists()
+    content = output_path.read_text()
+    assert "hex" in content
+    # cb.Cylinder generates 12 hex blocks (O-grid)
+    assert content.count("hex") >= 12
+
+
+def test_build_sphere_end_to_end(tmp_path):
+    """Full spec → blockMeshDict for a sphere."""
+    output_path = tmp_path / "system" / "blockMeshDict"
+    os.makedirs(output_path.parent, exist_ok=True)
+
+    spec = {
+        "blocks": [{
+            "type": "sphere",
+            "name": "test_sphere",
+            "center": [0, 0, 0],
+            "radius_point": [1, 0, 0],
+            "radius": 1.0,
+            "cells": [5, 8, 5],
+            "grading_type": "RATIO",
+            "grading": [1.0, 1.0, 1.0],
+        }],
+        "merge_tolerance": 1e-4
+    }
+
+    _mb.build_from_spec(spec, str(output_path))
+    assert output_path.exists()
+    content = output_path.read_text()
+    assert "searchableSphere" in content
+    assert content.count("hex") > 0
+
+
+def test_build_disk_end_to_end(tmp_path):
+    """Full spec → blockMeshDict for a thin disk."""
+    output_path = tmp_path / "system" / "blockMeshDict"
+    os.makedirs(output_path.parent, exist_ok=True)
+
+    spec = {
+        "blocks": [{
+            "type": "disk",
+            "name": "test_disk",
+            "center": [0, 0, 0],
+            "radius_point": [1, 0, 0],
+            "normal": [0, 0, 1],
+            "thickness": 0.01,
+            "cells": [5, 8, 1],
+            "grading_type": "RATIO",
+            "grading": [1.0, 1.0, 1.0],
+        }],
+        "merge_tolerance": 1e-4
+    }
+
+    _mb.build_from_spec(spec, str(output_path))
+    assert output_path.exists()
+    content = output_path.read_text()
+    assert "hex" in content
+
+
 def test_build_revolve():
     """A revolve block builds correctly."""
     mesh = cb.Mesh()
@@ -83,6 +216,17 @@ def test_unknown_block_type_raises():
     }
     with pytest.raises(ValueError, match="Unknown block type"):
         _mb.build_block(mesh, spec)
+
+
+def test_unsupported_block_is_skipped():
+    """Unsupported blocks are skipped without raising."""
+    mesh = cb.Mesh()
+    spec = {
+        "type": "unsupported",
+        "name": "bad_block",
+        "reason": "complex-surface",
+    }
+    assert _mb.build_block(mesh, spec) is False
 
 
 def test_build_from_spec_box_end_to_end(tmp_path):

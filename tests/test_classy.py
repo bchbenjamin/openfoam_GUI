@@ -4,6 +4,9 @@
 # Expected result: creates "blockMeshDict_test" in the current directory
 
 import os
+
+os.environ.setdefault("NUMBA_DISABLE_JIT", "1")
+
 import classy_blocks as cb
 
 def test_simple_box():

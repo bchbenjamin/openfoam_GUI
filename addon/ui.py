@@ -16,6 +16,15 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
             layout.label(text=scene_props.pipeline_status, icon='INFO')
             layout.separator()
 
+        if scene_props.structure_warning:
+            warning_box = layout.box()
+            for index, line in enumerate(scene_props.structure_warning.split(" | ")):
+                warning_box.label(
+                    text=line,
+                    icon='ERROR' if index == 0 else 'BLANK1'
+                )
+            layout.separator()
+
         layout.label(text="Case Settings")
         layout.prop(scene_props, "case_path")
 

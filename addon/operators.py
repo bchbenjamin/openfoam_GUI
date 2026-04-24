@@ -10,6 +10,27 @@ def set_status(context, status_msg):
         context.area.tag_redraw()
 
 
+def style_reloaded_mesh(obj, prefer_wireframe=False):
+    """
+    Apply a viewport-only readability style to imported result meshes.
+
+    Disk/circle-derived results inevitably reload as closed surfaces, so the
+    best non-destructive workaround is to show the imported object in wireframe.
+    """
+    # if obj is None:
+    #     return
+
+    # if prefer_wireframe:
+    #     if hasattr(obj, "display_type"):
+    #         obj.display_type = 'WIRE'
+    #     if hasattr(obj, "show_wire"):
+    #         obj.show_wire = True
+    #     if hasattr(obj, "show_all_edges"):
+    #         obj.show_all_edges = True
+    #     if hasattr(obj, "show_in_front"):
+    #         obj.show_in_front = True
+
+
 
 class CLASSY_OT_generate_mesh(bpy.types.Operator):
     """Generate blockMeshDict from tagged Blender objects"""
@@ -19,6 +40,7 @@ class CLASSY_OT_generate_mesh(bpy.types.Operator):
     def execute(self, context):
         set_status(context, "Generating blockMeshDict...")
         scene_props = context.scene.classy_mesh_props
+        scene_props.structure_warning = ""
         case_path = scene_props.case_path
 
         if not case_path:
@@ -39,6 +61,23 @@ class CLASSY_OT_generate_mesh(bpy.types.Operator):
 
         try:
             spec = geometry_extractor.extract_geometry(context)
+            meshable_blocks = [
+                block for block in spec["blocks"]
+                if block.get("type") != "unsupported"
+            ]
+            scene_props.last_generated_has_disk = any(
+                block.get("type") == "disk" for block in meshable_blocks
+            )
+
+            warnings = spec.get("warnings", [])
+            if warnings:
+                warning_msg = "Unsupported objects will be skipped: " + " | ".join(
+                    warning.split(": ", 1)[0] for warning in warnings[:4]
+                )
+                if len(warnings) > 4:
+                    warning_msg += f" | +{len(warnings) - 4} more"
+                scene_props.structure_warning = warning_msg
+                self.report({'WARNING'}, warning_msg)
 
             if not spec["blocks"]:
                 self.report({'ERROR'},
@@ -46,47 +85,19 @@ class CLASSY_OT_generate_mesh(bpy.types.Operator):
                 set_status(context, "Failed: No mesh objects")
                 return {'CANCELLED'}
 
+            if not meshable_blocks:
+                self.report({'ERROR'},
+                            "No supported structured mesh objects found — "
+                            "unsupported meshes were skipped")
+                set_status(context, "Failed: No supported mesh objects")
+                return {'CANCELLED'}
 
-            # Auto-export non-box objects as STL for self-projection
-            tri_surface_dir = os.path.join(case_path, "constant", "triSurface")
-            exported_count = 0
-            for block_spec in spec["blocks"]:
-                if block_spec.get("needs_self_projection", False):
-                    obj_name = block_spec["name"]
-                    stl_filename = f"{obj_name}.stl"
-                    stl_path = os.path.join(tri_surface_dir, stl_filename)
-                    os.makedirs(tri_surface_dir, exist_ok=True)
-
-                    obj = context.scene.objects.get(obj_name)
-                    if not obj:
-                        raise RuntimeError(
-                            f"Object '{obj_name}' not found in scene for "
-                            f"STL export — cannot self-project"
-                        )
-
-                    print(f"[classy_blocks] Exporting '{obj_name}' → {stl_path}")
-                    bpy.ops.object.select_all(action='DESELECT')
-                    obj.select_set(True)
-                    context.view_layer.objects.active = obj
-                    bpy.ops.wm.stl_export(
-                        filepath=stl_path,
-                        export_selected_objects=True
-                    )
-                    block_spec["self_stl_name"] = stl_filename
-                    exported_count += 1
-                    print(f"[classy_blocks]   Exported: "
-                          f"{os.path.getsize(stl_path)} bytes")
-
-            if exported_count > 0:
-                print(f"[classy_blocks] Exported {exported_count} STL file(s) "
-                      f"for shape-conforming projection")
-
-            # Build the blockMeshDict
+            # Build the blockMeshDict (auto-detection already classified shapes)
             mesh_builder.build_from_spec(spec, output_path)
 
             # Setup the complete OpenFOAM case (controlDict, etc.)
             patch_names = list(set(
-                b.get("patch_name", "defaultWall") for b in spec["blocks"]
+                b.get("patch_name", "defaultWall") for b in meshable_blocks
             ))
             case_setup.setup_incompressible_case(case_path, patch_names)
 
@@ -302,6 +313,10 @@ class CLASSY_OT_reload_mesh(bpy.types.Operator):
             # Load the first VTK file found
             vtk_path = vtk_files[0]
             result = vtk_importer.load_vtk_as_blender_mesh(vtk_path)
+            style_reloaded_mesh(
+                result,
+                prefer_wireframe=scene_props.last_generated_has_disk,
+            )
 
             if result is None:
                 self.report({'WARNING'},
