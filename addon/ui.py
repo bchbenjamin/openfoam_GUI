@@ -31,13 +31,12 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
             layout.separator()
             props = obj.classy_block_props
 
-            # Exclusion toggle — replaces the old "tag as block"
+            # Exclusion toggle
             header_box = layout.box()
             row = header_box.row()
             row.prop(props, "exclude_from_mesh", text=f"Exclude '{obj.name}'", icon='CANCEL' if props.exclude_from_mesh else 'CHECKMARK')
 
             if not props.exclude_from_mesh:
-                header_box.prop(props, "block_type")
                 header_box.prop(props, "cells")
                 header_box.prop(props, "patch_name")
 
@@ -54,13 +53,12 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                     box.prop(props, "start_size")
                     box.prop(props, "end_size")
 
-                # --- STL Projection controls ---
-                if props.block_type == "box":
-                    layout.separator()
-                    box_stl = layout.box()
-                    box_stl.label(text="STL Projection (optional)")
-                    box_stl.prop(props, "stl_projection_face")
-                    box_stl.prop(props, "stl_file")
+                # --- STL Projection controls (user-specified) ---
+                layout.separator()
+                box_stl = layout.box()
+                box_stl.label(text="STL Projection (optional)")
+                box_stl.prop(props, "stl_projection_face")
+                box_stl.prop(props, "stl_file")
 
         # --- STL Export Section ---
         layout.separator()
@@ -73,7 +71,7 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
         layout.separator()
         layout.label(text="Auto-Update Mesh")
         layout.prop(scene_props, "use_auto_update")
-        
+
         if scene_props.use_auto_update:
             prefs = context.preferences.addons[__package__].preferences
             if active_blocks > prefs.auto_update_limit:

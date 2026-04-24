@@ -1,10 +1,10 @@
 import bpy
 
 class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
-    exclude_from_mesh: bpy.props.BoolProperty(name="Exclude from Mesh", default=False)
-    block_type: bpy.props.EnumProperty(
-        name="Block Type",
-        items=[("box", "Box", ""), ("extrude", "Extrude", ""), ("revolve", "Revolve", "")]
+    exclude_from_mesh: bpy.props.BoolProperty(
+        name="Exclude from Mesh",
+        default=False,
+        description="Exclude this object from the blockMeshDict generation"
     )
     cells: bpy.props.IntVectorProperty(name="Cells X/Y/Z", default=(10, 10, 10), min=1)
     patch_name: bpy.props.StringProperty(name="Patch Name", default="defaultWall")
@@ -32,7 +32,7 @@ class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
         default=1e-4, min=1e-10, precision=8,
     )
 
-    # --- STL Projection properties ---
+    # --- STL Projection properties (user-specified, e.g. terrain) ---
     stl_projection_face: bpy.props.EnumProperty(
         name="Project Face",
         items=[

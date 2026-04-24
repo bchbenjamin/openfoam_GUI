@@ -144,7 +144,19 @@ import numpy; print(f"numpy {numpy.__version__}")
 - **Procedure:** Created default cube, tagged as box block (10x10x10 cells). Generated mesh -> Ran blockMesh -> Converted to VTK -> Reloaded.
 - **Result:** 'BlockMesh_Result' object appeared correctly with 1331 vertices and 1000 cells. Timing: ~2s for blockmesh, <1s for VTK conversion, ~1s for PyVista reload. No major issues found.
 
-### STL Projection Face Names
-For `cb.Box` the valid face/side names used by `project_side()` are:
-`'bottom', 'top', 'front', 'back', 'left', 'right'`.
-Ensure that Blender properties pass one of these strings.
+### Universal Shape Support (STL Self-Projection)
+All mesh objects are automatically treated as blocks (opt-out via `exclude_from_mesh`).
+**Every object uses the same pipeline — no shape detection or classification.**
+
+How it works:
+1. Every object → `cb.Box(p_min, p_max)` from its bounding box
+2. If the object is a plain box (8 verts, 6 quad faces): no projection needed
+3. If the object is anything else (cylinder, sphere, monkey, etc.):
+   - Export the object as STL to `<case>/constant/triSurface/<name>.stl`
+   - Project all 6 box faces onto the STL via `box.project_side(face, stl_name)`
+   - blockMesh deforms the hex vertices to follow the original geometry
+
+**Valid face names for `project_side()`**:
+`'bottom', 'top', 'front', 'back', 'left', 'right'`
+
+**Box detection** (`_is_box_shaped`): 8 vertices + 6 quad faces = skip projection.

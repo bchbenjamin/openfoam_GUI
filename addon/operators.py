@@ -47,13 +47,46 @@ class CLASSY_OT_generate_mesh(bpy.types.Operator):
 
             if not spec["blocks"]:
                 self.report({'ERROR'},
-                            "No block objects found — tag at least one "
-                            "object as a block in the Classy Blocks panel")
+                            "No mesh objects found in the scene — add at "
+                            "least one mesh object to generate a blockMeshDict")
                 set_status(context, "Failed: No blocks tagged")
                 return {'CANCELLED'}
 
             # Ensure the system/ directory exists
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+            # Export non-box objects as STL for self-projection
+            tri_surface_dir = os.path.join(case_path, "constant", "triSurface")
+            os.makedirs(tri_surface_dir, exist_ok=True)
+
+            for block_spec in spec["blocks"]:
+                if block_spec.get("needs_self_projection", False):
+                    obj_name = block_spec["name"]
+                    stl_filename = f"{obj_name}.stl"
+                    stl_path = os.path.join(tri_surface_dir, stl_filename)
+
+                    # Find the Blender object and export it as STL
+                    obj = context.scene.objects.get(obj_name)
+                    if obj:
+                        print(f"[classy_blocks] Exporting '{obj_name}' as STL → {stl_path}")
+                        # Deselect all, select only this object, export
+                        bpy.ops.object.select_all(action='DESELECT')
+                        obj.select_set(True)
+                        context.view_layer.objects.active = obj
+                        try:
+                            bpy.ops.wm.stl_export(
+                                filepath=stl_path,
+                                export_selected_objects=True
+                            )
+                            block_spec["self_stl_name"] = stl_filename
+                            print(f"[classy_blocks]   Exported OK: {os.path.getsize(stl_path)} bytes")
+                        except Exception as export_err:
+                            print(f"[classy_blocks]   STL export failed for '{obj_name}': {export_err}")
+                            # Fall back to plain box (no projection)
+                            block_spec["needs_self_projection"] = False
+                    else:
+                        print(f"[classy_blocks]   WARNING: Object '{obj_name}' not found in scene")
+                        block_spec["needs_self_projection"] = False
 
             # Build the blockMeshDict
             mesh_builder.build_from_spec(spec, output_path)
