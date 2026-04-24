@@ -21,7 +21,6 @@ class CLASSY_OT_generate_mesh(bpy.types.Operator):
         scene_props = context.scene.classy_mesh_props
         case_path = scene_props.case_path
 
-        # Path validation guard
         if not case_path:
             self.report({'ERROR'},
                         "Case directory is not set — open the Classy Blocks "
@@ -30,69 +29,65 @@ class CLASSY_OT_generate_mesh(bpy.types.Operator):
             return {'CANCELLED'}
 
         case_path = os.path.expanduser(case_path)
-        
-        # Verify case directory exists (or at least its parent if we are generating)
-        if not os.path.exists(os.path.dirname(case_path)):
-            self.report({'ERROR'},
-                        f"blockMeshDict generation failed: parent of case directory not found at "
-                        f"'{case_path}' — check the Case Directory field")
-            set_status(context, "Failed: Invalid case parent path")
-            return {'CANCELLED'}
+        # Strip trailing slashes for consistent path handling
+        case_path = case_path.rstrip('/')
 
         output_path = os.path.join(case_path, "system", "blockMeshDict")
 
+        # Create the full directory tree (case + system/) if it doesn't exist
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
         try:
-            # Extract geometry from tagged Blender objects
             spec = geometry_extractor.extract_geometry(context)
 
             if not spec["blocks"]:
                 self.report({'ERROR'},
-                            "No mesh objects found in the scene — add at "
-                            "least one mesh object to generate a blockMeshDict")
-                set_status(context, "Failed: No blocks tagged")
+                            "No mesh objects found — add at least one mesh object")
+                set_status(context, "Failed: No mesh objects")
                 return {'CANCELLED'}
 
-            # Ensure the system/ directory exists
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-            # Export non-box objects as STL for self-projection
+            # Auto-export non-box objects as STL for self-projection
             tri_surface_dir = os.path.join(case_path, "constant", "triSurface")
-            os.makedirs(tri_surface_dir, exist_ok=True)
-
+            exported_count = 0
             for block_spec in spec["blocks"]:
                 if block_spec.get("needs_self_projection", False):
                     obj_name = block_spec["name"]
                     stl_filename = f"{obj_name}.stl"
                     stl_path = os.path.join(tri_surface_dir, stl_filename)
+                    os.makedirs(tri_surface_dir, exist_ok=True)
 
-                    # Find the Blender object and export it as STL
                     obj = context.scene.objects.get(obj_name)
-                    if obj:
-                        print(f"[classy_blocks] Exporting '{obj_name}' as STL → {stl_path}")
-                        # Deselect all, select only this object, export
-                        bpy.ops.object.select_all(action='DESELECT')
-                        obj.select_set(True)
-                        context.view_layer.objects.active = obj
-                        try:
-                            bpy.ops.wm.stl_export(
-                                filepath=stl_path,
-                                export_selected_objects=True
-                            )
-                            block_spec["self_stl_name"] = stl_filename
-                            print(f"[classy_blocks]   Exported OK: {os.path.getsize(stl_path)} bytes")
-                        except Exception as export_err:
-                            print(f"[classy_blocks]   STL export failed for '{obj_name}': {export_err}")
-                            # Fall back to plain box (no projection)
-                            block_spec["needs_self_projection"] = False
-                    else:
-                        print(f"[classy_blocks]   WARNING: Object '{obj_name}' not found in scene")
-                        block_spec["needs_self_projection"] = False
+                    if not obj:
+                        raise RuntimeError(
+                            f"Object '{obj_name}' not found in scene for "
+                            f"STL export — cannot self-project"
+                        )
+
+                    print(f"[classy_blocks] Exporting '{obj_name}' → {stl_path}")
+                    bpy.ops.object.select_all(action='DESELECT')
+                    obj.select_set(True)
+                    context.view_layer.objects.active = obj
+                    bpy.ops.wm.stl_export(
+                        filepath=stl_path,
+                        export_selected_objects=True
+                    )
+                    block_spec["self_stl_name"] = stl_filename
+                    exported_count += 1
+                    print(f"[classy_blocks]   Exported: "
+                          f"{os.path.getsize(stl_path)} bytes")
+
+            if exported_count > 0:
+                print(f"[classy_blocks] Exported {exported_count} STL file(s) "
+                      f"for shape-conforming projection")
 
             # Build the blockMeshDict
             mesh_builder.build_from_spec(spec, output_path)
 
             # Setup the complete OpenFOAM case (controlDict, etc.)
-            patch_names = list(set([b.get("patch_name", "defaultWall") for b in spec["blocks"]]))
+            patch_names = list(set(
+                b.get("patch_name", "defaultWall") for b in spec["blocks"]
+            ))
             case_setup.setup_incompressible_case(case_path, patch_names)
 
             file_size = os.path.getsize(output_path)
@@ -104,7 +99,8 @@ class CLASSY_OT_generate_mesh(bpy.types.Operator):
         except Exception as e:
             self.report({'ERROR'},
                         f"blockMeshDict generation failed: {str(e)}")
-            set_status(context, "Failed: check console")
+            set_status(context, "Failed: check System Console")
+            import traceback; traceback.print_exc()
             return {'CANCELLED'}
 
 
@@ -127,7 +123,7 @@ class CLASSY_OT_run_blockmesh(bpy.types.Operator):
             set_status(context, "Failed: Case directory not set")
             return {'CANCELLED'}
 
-        case_path = os.path.expanduser(case_path)
+        case_path = os.path.expanduser(case_path).rstrip('/')
 
         if not os.path.isdir(case_path):
             self.report({'ERROR'},
@@ -216,7 +212,7 @@ class CLASSY_OT_convert_vtk(bpy.types.Operator):
             set_status(context, "Failed: Case directory not set")
             return {'CANCELLED'}
 
-        case_path = os.path.expanduser(case_path)
+        case_path = os.path.expanduser(case_path).rstrip('/')
 
         if not os.path.isdir(case_path):
             self.report({'ERROR'},
@@ -284,7 +280,7 @@ class CLASSY_OT_reload_mesh(bpy.types.Operator):
             set_status(context, "Failed: Case directory not set")
             return {'CANCELLED'}
 
-        case_path = os.path.expanduser(case_path)
+        case_path = os.path.expanduser(case_path).rstrip('/')
 
         if not os.path.isdir(case_path):
             self.report({'ERROR'},

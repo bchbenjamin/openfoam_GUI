@@ -21,9 +21,12 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
 
         # --- Scene-wide block count summary ---
         mesh_objects = [o for o in context.scene.objects if o.type == 'MESH']
-        excluded = sum(1 for o in mesh_objects if getattr(o, "classy_block_props", None) and o.classy_block_props.exclude_from_mesh)
+        excluded = sum(1 for o in mesh_objects
+                       if getattr(o, "classy_block_props", None)
+                       and o.classy_block_props.exclude_from_mesh)
         active_blocks = len(mesh_objects) - excluded
-        layout.label(text=f"Mesh Objects: {active_blocks} blocks ({excluded} excluded)", icon='MESH_CUBE')
+        layout.label(text=f"Mesh Objects: {active_blocks} blocks "
+                     f"({excluded} excluded)", icon='MESH_CUBE')
 
         # --- Per-object settings (shown for active selection) ---
         obj = context.active_object
@@ -34,11 +37,38 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
             # Exclusion toggle
             header_box = layout.box()
             row = header_box.row()
-            row.prop(props, "exclude_from_mesh", text=f"Exclude '{obj.name}'", icon='CANCEL' if props.exclude_from_mesh else 'CHECKMARK')
+            icon = 'CANCEL' if props.exclude_from_mesh else 'CHECKMARK'
+            row.prop(props, "exclude_from_mesh",
+                     text=f"Exclude '{obj.name}'", icon=icon)
 
             if not props.exclude_from_mesh:
+                # Common settings
                 header_box.prop(props, "cells")
                 header_box.prop(props, "patch_name")
+                header_box.prop(props, "block_type")
+
+                # --- Block-type specific parameters ---
+                if props.block_type == "EXTRUDE":
+                    ext_box = layout.box()
+                    ext_box.label(text="Extrude Parameters")
+                    ext_box.prop(props, "extrude_face_index")
+                    ext_box.prop(props, "extrude_axis")
+                    ext_box.prop(props, "extrude_distance")
+
+                elif props.block_type == "REVOLVE":
+                    rev_box = layout.box()
+                    rev_box.label(text="Revolve Parameters")
+                    rev_box.prop(props, "revolve_face_index")
+                    rev_box.prop(props, "revolve_angle")
+                    rev_box.prop(props, "revolve_axis")
+                    rev_box.prop(props, "revolve_origin")
+
+                elif props.block_type == "BOX":
+                    # STL projection (terrain) — only for BOX type
+                    stl_box = layout.box()
+                    stl_box.label(text="STL Face Projection (optional — terrain only)")
+                    stl_box.prop(props, "stl_projection_face")
+                    stl_box.prop(props, "stl_file")
 
                 # --- Grading controls ---
                 layout.separator()
@@ -52,13 +82,6 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                 elif props.grading_type == "SYMMETRIC":
                     box.prop(props, "start_size")
                     box.prop(props, "end_size")
-
-                # --- STL Projection controls (user-specified) ---
-                layout.separator()
-                box_stl = layout.box()
-                box_stl.label(text="STL Projection (optional)")
-                box_stl.prop(props, "stl_projection_face")
-                box_stl.prop(props, "stl_file")
 
         # --- STL Export Section ---
         layout.separator()
@@ -75,13 +98,17 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
         if scene_props.use_auto_update:
             prefs = context.preferences.addons[__package__].preferences
             if active_blocks > prefs.auto_update_limit:
-                layout.label(text=f"Disabled: Project too large (> {prefs.auto_update_limit} blocks)", icon='ERROR')
+                layout.label(
+                    text=f"Disabled: Project too large "
+                         f"(> {prefs.auto_update_limit} blocks)",
+                    icon='ERROR')
 
         # --- Mesh quality display ---
         quality = scene_props.last_mesh_quality
         if quality:
             layout.separator()
-            layout.label(text=f"Last Quality: {quality}", icon=scene_props.last_mesh_quality_icon)
+            layout.label(text=f"Last Quality: {quality}",
+                         icon=scene_props.last_mesh_quality_icon)
 
         layout.separator()
         layout.operator("classy.generate_mesh", text="1. Generate blockMeshDict")

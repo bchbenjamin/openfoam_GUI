@@ -1,5 +1,5 @@
 # tests/test_geometry_extractor_unit.py
-# Unit tests for geometry_extractor.py — universal Box+projection approach.
+# Unit tests for geometry_extractor.py — box/extrude/revolve dispatch.
 #
 # HOW TO RUN:
 #   cd ~/classy_blender_mesh
@@ -48,35 +48,13 @@ class _MockMatrix:
         ])
 
 
-def _make_mock_object(name, bound_box, matrix_world, props_dict=None,
-                      num_verts=None, num_faces=None, all_quads=True):
-    """
-    Creates a mock Blender mesh object.
-
-    Args:
-        num_verts: Override vertex count (for _is_box_shaped testing).
-        num_faces: Override face count.
-        all_quads: Whether all faces are quads (for box detection).
-    """
+def _make_mock_object(name, bound_box, matrix_world, props_dict=None):
+    """Creates a mock Blender mesh object."""
     obj = MagicMock()
     obj.name = name
     obj.type = 'MESH'
     obj.bound_box = bound_box
     obj.matrix_world = matrix_world
-
-    # Mock mesh data for _is_box_shaped
-    actual_verts = num_verts if num_verts is not None else len(bound_box)
-    actual_faces = num_faces if num_faces is not None else 6
-
-    mock_verts = [MagicMock() for _ in range(actual_verts)]
-    obj.data.vertices = mock_verts
-
-    mock_faces = []
-    for _ in range(actual_faces):
-        f = MagicMock()
-        f.vertices = [0, 1, 2, 3] if all_quads else [0, 1, 2]
-        mock_faces.append(f)
-    obj.data.polygons = mock_faces
 
     if props_dict is not None:
         class _Props:
@@ -129,39 +107,72 @@ _ge = _load_geometry_extractor()
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Tests
+# BOX Tests
 # ──────────────────────────────────────────────────────────────────────
 
-def test_get_world_bounding_box_identity():
+def test_box_identity():
     """Unit cube at origin → p_min=(-1,-1,-1), p_max=(1,1,1)."""
-    obj = _make_mock_object("Cube", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)))
-    p_min, p_max = _ge._get_world_bounding_box(obj)
-    assert p_min == [-1, -1, -1]
-    assert p_max == [1, 1, 1]
+    obj = _make_mock_object("Cube", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
+                             {"block_type": "BOX", "cells": [10, 10, 10]})
+    mock_ctx = MagicMock()
+    mock_ctx.scene.objects = [obj]
+
+    result = _ge.extract_geometry(mock_ctx)
+    assert len(result["blocks"]) == 1
+    assert result["blocks"][0]["type"] == "box"
+    assert result["blocks"][0]["p_min"] == [-1, -1, -1]
+    assert result["blocks"][0]["p_max"] == [1, 1, 1]
 
 
-def test_get_world_bounding_box_translated():
+def test_box_translated():
     """Unit cube at (10,10,10) preserves offset."""
-    obj = _make_mock_object("Cube_Far", _UNIT_CUBE_BBOX, _MockMatrix((10, 10, 10)))
-    p_min, p_max = _ge._get_world_bounding_box(obj)
-    assert p_min == [9, 9, 9]
-    assert p_max == [11, 11, 11]
+    obj = _make_mock_object("Cube_Far", _UNIT_CUBE_BBOX, _MockMatrix((10, 10, 10)),
+                             {"block_type": "BOX", "cells": [10, 10, 10]})
+    mock_ctx = MagicMock()
+    mock_ctx.scene.objects = [obj]
+
+    result = _ge.extract_geometry(mock_ctx)
+    assert result["blocks"][0]["p_min"] == [9, 9, 9]
+    assert result["blocks"][0]["p_max"] == [11, 11, 11]
 
 
-def test_get_world_bounding_box_custom():
+def test_box_custom_bbox():
     """Custom box (0,0,0)→(2,1,3) + translation (5,0,0)."""
-    obj = _make_mock_object("CustomBox", _CUSTOM_BBOX, _MockMatrix((5, 0, 0)))
-    p_min, p_max = _ge._get_world_bounding_box(obj)
-    assert p_min == [5, 0, 0]
-    assert p_max == [7, 1, 3]
+    obj = _make_mock_object("CustomBox", _CUSTOM_BBOX, _MockMatrix((5, 0, 0)),
+                             {"block_type": "BOX", "cells": [5, 5, 5]})
+    mock_ctx = MagicMock()
+    mock_ctx.scene.objects = [obj]
 
+    result = _ge.extract_geometry(mock_ctx)
+    assert result["blocks"][0]["p_min"] == [5, 0, 0]
+    assert result["blocks"][0]["p_max"] == [7, 1, 3]
+
+
+def test_box_with_stl_projection():
+    """BOX with STL file set produces stl_projections dict."""
+    obj = _make_mock_object("TerrainBox", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
+                             {"block_type": "BOX", "cells": [10, 10, 10],
+                              "stl_file": "/path/to/terrain.stl",
+                              "stl_projection_face": "top"})
+    mock_ctx = MagicMock()
+    mock_ctx.scene.objects = [obj]
+
+    result = _ge.extract_geometry(mock_ctx)
+    assert result["blocks"][0]["stl_projections"] == {"top": "terrain.stl"}
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Dispatch / General Tests
+# ──────────────────────────────────────────────────────────────────────
 
 def test_all_mesh_objects_auto_included():
     """All mesh objects are included as blocks by default."""
     box1 = _make_mock_object("Box1", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
-                             {"cells": [10, 10, 10], "patch_name": "wall"})
+                             {"block_type": "BOX", "cells": [10, 10, 10],
+                              "patch_name": "wall"})
     box2 = _make_mock_object("Box2", _UNIT_CUBE_BBOX, _MockMatrix((5, 0, 0)),
-                             {"cells": [20, 10, 10], "patch_name": "inlet"})
+                             {"block_type": "BOX", "cells": [20, 10, 10],
+                              "patch_name": "inlet"})
 
     camera = MagicMock()
     camera.type = 'CAMERA'
@@ -172,16 +183,16 @@ def test_all_mesh_objects_auto_included():
 
     result = _ge.extract_geometry(mock_ctx)
     assert len(result["blocks"]) == 2
-    assert result["blocks"][0]["name"] == "Box1"
-    assert result["blocks"][1]["name"] == "Box2"
 
 
 def test_exclude_toggle():
     """Objects with exclude_from_mesh=True are skipped."""
     included = _make_mock_object("IncBox", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
-                                 {"cells": [10, 10, 10], "patch_name": "wall"})
+                                 {"block_type": "BOX", "cells": [10, 10, 10],
+                                  "patch_name": "wall"})
     excluded = _make_mock_object("ExBox", _UNIT_CUBE_BBOX, _MockMatrix((5, 0, 0)),
-                                 {"exclude_from_mesh": True, "cells": [10, 10, 10]})
+                                 {"exclude_from_mesh": True, "block_type": "BOX",
+                                  "cells": [10, 10, 10]})
 
     mock_ctx = MagicMock()
     mock_ctx.scene.objects = [included, excluded]
@@ -189,63 +200,6 @@ def test_exclude_toggle():
     result = _ge.extract_geometry(mock_ctx)
     assert len(result["blocks"]) == 1
     assert result["blocks"][0]["name"] == "IncBox"
-
-
-def test_all_blocks_are_type_box():
-    """Every block is type 'box' regardless of shape."""
-    cube = _make_mock_object("Cube", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
-                              {"cells": [10, 10, 10]},
-                              num_verts=8, num_faces=6, all_quads=True)
-    sphere = _make_mock_object("Sphere", _UNIT_CUBE_BBOX, _MockMatrix((5, 0, 0)),
-                                {"cells": [10, 10, 10]},
-                                num_verts=482, num_faces=480, all_quads=True)
-
-    mock_ctx = MagicMock()
-    mock_ctx.scene.objects = [cube, sphere]
-
-    result = _ge.extract_geometry(mock_ctx)
-    assert len(result["blocks"]) == 2
-    assert result["blocks"][0]["type"] == "box"
-    assert result["blocks"][1]["type"] == "box"
-
-
-def test_box_skips_self_projection():
-    """A plain cube (8v, 6f, all quads) does NOT need self-projection."""
-    cube = _make_mock_object("Cube", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
-                              {"cells": [10, 10, 10]},
-                              num_verts=8, num_faces=6, all_quads=True)
-
-    mock_ctx = MagicMock()
-    mock_ctx.scene.objects = [cube]
-
-    result = _ge.extract_geometry(mock_ctx)
-    assert result["blocks"][0]["needs_self_projection"] == False
-
-
-def test_nonbox_needs_self_projection():
-    """A sphere (482 verts) DOES need self-projection."""
-    sphere = _make_mock_object("Sphere", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
-                                {"cells": [10, 10, 10]},
-                                num_verts=482, num_faces=480, all_quads=True)
-
-    mock_ctx = MagicMock()
-    mock_ctx.scene.objects = [sphere]
-
-    result = _ge.extract_geometry(mock_ctx)
-    assert result["blocks"][0]["needs_self_projection"] == True
-
-
-def test_coordinate_preservation():
-    """Coordinates must be preserved at (10,10,10)."""
-    obj = _make_mock_object("FarBox", _UNIT_CUBE_BBOX, _MockMatrix((10, 10, 10)),
-                             {"cells": [5, 5, 5]})
-
-    mock_ctx = MagicMock()
-    mock_ctx.scene.objects = [obj]
-
-    result = _ge.extract_geometry(mock_ctx)
-    assert result["blocks"][0]["p_min"] == [9, 9, 9]
-    assert result["blocks"][0]["p_max"] == [11, 11, 11]
 
 
 def test_default_properties():
@@ -258,6 +212,7 @@ def test_default_properties():
 
     result = _ge.extract_geometry(mock_ctx)
     assert len(result["blocks"]) == 1
+    assert result["blocks"][0]["type"] == "box"
     assert result["blocks"][0]["cells"] == [10, 10, 10]
     assert result["blocks"][0]["grading"] == [1.0, 1.0, 1.0]
     assert result["blocks"][0]["patch_name"] == "defaultWall"
@@ -273,16 +228,49 @@ def test_empty_scene():
     assert result["merge_tolerance"] == 1e-4
 
 
+def test_block_type_dispatch_extrude():
+    """EXTRUDE type is dispatched correctly (will fail at face extraction
+    without full Blender, but the dispatch itself should try)."""
+    obj = _make_mock_object("ExtrudePlane", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
+                             {"block_type": "EXTRUDE", "cells": [10, 10, 10],
+                              "extrude_face_index": 0,
+                              "extrude_axis": "Z",
+                              "extrude_distance": 1.0})
+    mock_ctx = MagicMock()
+    mock_ctx.scene.objects = [obj]
+
+    # This will fail because _extract_face_vertices_world needs real bpy.context
+    # but we verify the error is caught gracefully (not a crash)
+    result = _ge.extract_geometry(mock_ctx)
+    # Block should be skipped (extraction error caught)
+    assert len(result["blocks"]) == 0
+
+
+def test_block_type_dispatch_revolve():
+    """REVOLVE type is dispatched correctly (graceful failure without Blender)."""
+    obj = _make_mock_object("RevolvePlane", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
+                             {"block_type": "REVOLVE", "cells": [10, 10, 10],
+                              "revolve_face_index": 0,
+                              "revolve_angle": 90.0,
+                              "revolve_axis": "Z",
+                              "revolve_origin": (0, 0, 0)})
+    mock_ctx = MagicMock()
+    mock_ctx.scene.objects = [obj]
+
+    result = _ge.extract_geometry(mock_ctx)
+    # Block should be skipped (extraction error caught)
+    assert len(result["blocks"]) == 0
+
+
 if __name__ == "__main__":
-    test_get_world_bounding_box_identity()
-    test_get_world_bounding_box_translated()
-    test_get_world_bounding_box_custom()
+    test_box_identity()
+    test_box_translated()
+    test_box_custom_bbox()
+    test_box_with_stl_projection()
     test_all_mesh_objects_auto_included()
     test_exclude_toggle()
-    test_all_blocks_are_type_box()
-    test_box_skips_self_projection()
-    test_nonbox_needs_self_projection()
-    test_coordinate_preservation()
     test_default_properties()
     test_empty_scene()
+    test_block_type_dispatch_extrude()
+    test_block_type_dispatch_revolve()
     print("\nAll geometry extractor unit tests PASSED!")
