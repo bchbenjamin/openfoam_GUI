@@ -10,25 +10,6 @@ def set_status(context, status_msg):
         context.area.tag_redraw()
 
 
-def style_reloaded_mesh(obj, prefer_wireframe=False):
-    """
-    Apply a viewport-only readability style to imported result meshes.
-
-    Disk/circle-derived results inevitably reload as closed surfaces, so the
-    best non-destructive workaround is to show the imported object in wireframe.
-    """
-    # if obj is None:
-    #     return
-
-    # if prefer_wireframe:
-    #     if hasattr(obj, "display_type"):
-    #         obj.display_type = 'WIRE'
-    #     if hasattr(obj, "show_wire"):
-    #         obj.show_wire = True
-    #     if hasattr(obj, "show_all_edges"):
-    #         obj.show_all_edges = True
-    #     if hasattr(obj, "show_in_front"):
-    #         obj.show_in_front = True
 
 
 
@@ -65,9 +46,7 @@ class CLASSY_OT_generate_mesh(bpy.types.Operator):
                 block for block in spec["blocks"]
                 if block.get("type") != "unsupported"
             ]
-            scene_props.last_generated_has_disk = any(
-                block.get("type") == "disk" for block in meshable_blocks
-            )
+
 
             warnings = spec.get("warnings", [])
             if warnings:
@@ -313,10 +292,6 @@ class CLASSY_OT_reload_mesh(bpy.types.Operator):
             # Load the first VTK file found
             vtk_path = vtk_files[0]
             result = vtk_importer.load_vtk_as_blender_mesh(vtk_path)
-            style_reloaded_mesh(
-                result,
-                prefer_wireframe=scene_props.last_generated_has_disk,
-            )
 
             if result is None:
                 self.report({'WARNING'},
@@ -361,3 +336,52 @@ class MESH_OT_export_terrain_stl(bpy.types.Operator):
         except Exception as e:
             self.report({'ERROR'}, f"Failed to export terrain STL: {str(e)}")
             return {'CANCELLED'}
+
+
+class CLASSY_OT_run_all(bpy.types.Operator):
+    """Run the full pipeline: Generate → blockMesh → VTK → Reload"""
+    bl_idname = "classy.run_all"
+    bl_label = "Run All"
+
+    def execute(self, context):
+        context.window.cursor_set('WAIT')
+        try:
+            # Step 1: Generate blockMeshDict
+            result = bpy.ops.classy.generate_mesh()
+            if result != {'FINISHED'}:
+                self.report({'ERROR'}, "Pipeline stopped: blockMeshDict generation failed")
+                set_status(context, "Failed: Generate step")
+                return {'CANCELLED'}
+
+            # Step 2: Run blockMesh
+            result = bpy.ops.classy.run_blockmesh()
+            if result != {'FINISHED'}:
+                self.report({'ERROR'}, "Pipeline stopped: blockMesh failed")
+                set_status(context, "Failed: blockMesh step")
+                return {'CANCELLED'}
+
+            # Step 3: Convert to VTK
+            result = bpy.ops.classy.convert_vtk()
+            if result != {'FINISHED'}:
+                self.report({'ERROR'}, "Pipeline stopped: foamToVTK failed")
+                set_status(context, "Failed: VTK step")
+                return {'CANCELLED'}
+
+            # Step 4: Reload mesh
+            result = bpy.ops.classy.reload_mesh()
+            if result != {'FINISHED'}:
+                self.report({'ERROR'}, "Pipeline stopped: mesh reload failed")
+                set_status(context, "Failed: Reload step")
+                return {'CANCELLED'}
+
+            set_status(context, "Success: Full pipeline complete")
+            self.report({'INFO'}, "Full pipeline completed successfully")
+            return {'FINISHED'}
+
+        except Exception as e:
+            self.report({'ERROR'}, f"Pipeline failed: {str(e)}")
+            set_status(context, "Failed: Pipeline error")
+            import traceback; traceback.print_exc()
+            return {'CANCELLED'}
+        finally:
+            context.window.cursor_set('DEFAULT')

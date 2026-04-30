@@ -67,6 +67,12 @@ def extract_geometry(context):
             print(f"[classy_blocks] Skipping '{obj.name}' (excluded)")
             continue
 
+        # Check for unapplied transforms (warn only, never auto-apply)
+        transform_warning = _check_unapplied_transforms(obj)
+        if transform_warning:
+            warnings.append(transform_warning)
+            print(f"[classy_blocks]   WARNING: {transform_warning}")
+
         block_type = getattr(props, "block_type", "BOX") if props else "BOX"
 
         try:
@@ -110,9 +116,9 @@ def _extract_auto_detected(obj, props):
 
     Returns a typed spec dict, including non-blocking 'unsupported' specs.
     """
-    planar_spec = _extract_planar_round_shape(obj, props)
-    if planar_spec is not None:
-        return planar_spec
+    # NOTE: Planar shapes (circles, disks) are NOT supported as structured meshes.
+    # OpenFOAM requires 3D volume domains. The zero-thickness guard below will
+    # catch these and flag as unsupported with an actionable message.
 
     # --- Layer 1: Volume Ratio Heuristic ---
     p_min, p_max = _get_world_bounding_box(obj)
@@ -243,20 +249,11 @@ def _extract_planar_round_shape(obj, props):
     radius_point = (np.asarray(center) + axis_u * radius).tolist()
 
     print(f"[classy_blocks]   '{obj.name}': planar round profile detected "
-          f"(radius={radius:.4f}, thickness={thickness:.4f})")
-
-    return {
-        "type": "disk",
-        "name": obj.name,
-        "center": center,
-        "radius_point": radius_point,
-        "normal": normal,
-        "thickness": thickness,
-        "source_kind": "filled-disk" if is_filled_disk else "circle-outline",
-        "cells": _read_cells(props),
-        "patch_name": _read_patch_name(props),
-        **_read_grading(props),
-    }
+          f"— CFD domains must be 3D. Extrude this shape in Blender.")
+    return _make_unsupported_spec(
+        obj, props,
+        "planar-2D (CFD domains must be 3D — extrude this shape before meshing)"
+    )
 
 
 def _compute_mesh_volume(obj):
@@ -497,7 +494,12 @@ def _build_sphere_spec(obj, props, p_min, p_max):
 
     classy_blocks does not expose a single full-sphere constructor, so the
     builder will create two hemispheres around the same center.
+
+    The split axis is derived from the object's world rotation so that
+    rotated spheres are split along their actual local Z, not hard-coded [0,0,1].
     """
+    from mathutils import Vector
+
     center = [
         (p_min[0] + p_max[0]) / 2.0,
         (p_min[1] + p_max[1]) / 2.0,
@@ -506,12 +508,17 @@ def _build_sphere_spec(obj, props, p_min, p_max):
     radius = sum((p_max[i] - p_min[i]) / 2.0 for i in range(3)) / 3.0
     radius_point = [center[0] + radius, center[1], center[2]]
 
+    # Compute split axis: transform local Z by the object's world rotation
+    rot_matrix = obj.matrix_world.to_3x3()
+    split_axis = list((rot_matrix @ Vector((0, 0, 1))).normalized())
+
     return {
         "type": "sphere",
         "name": obj.name,
         "center": center,
         "radius_point": radius_point,
         "radius": radius,
+        "split_axis": split_axis,
         "cells": _read_cells(props),
         "patch_name": _read_patch_name(props),
         **_read_grading(props),
@@ -824,3 +831,27 @@ def _read_grading(props):
         "start_size": float(getattr(props, "start_size", 1e-4) if props else 1e-4),
         "end_size": float(getattr(props, "end_size", 1e-4) if props else 1e-4),
     }
+
+
+def _check_unapplied_transforms(obj):
+    """
+    Checks if an object has unapplied scale.
+
+    Returns a warning string if scale != (1,1,1), else None.
+    The pipeline still works correctly (we use matrix_world for all coords),
+    but unapplied scale can cause confusion if the user is thinking in local
+    coordinates. We warn — we NEVER auto-apply (that would break modifiers,
+    constraints, and animations).
+    """
+    scale = obj.scale
+    threshold = 1e-4
+    has_unapplied_scale = (
+        abs(scale[0] - 1.0) > threshold or
+        abs(scale[1] - 1.0) > threshold or
+        abs(scale[2] - 1.0) > threshold
+    )
+    if has_unapplied_scale:
+        return (f"'{obj.name}' has unapplied scale "
+                f"({scale[0]:.2f}, {scale[1]:.2f}, {scale[2]:.2f}). "
+                f"Apply scale (Ctrl+A) for predictable results.")
+    return None

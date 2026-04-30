@@ -151,14 +151,20 @@ def _build_cylinder(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
 def _build_sphere(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     """
     Builds a full sphere from two hemispheres.
+
+    The split axis comes from the spec (derived from the object's world
+    rotation). Falls back to [0,0,1] for backwards compatibility.
     """
     center = spec["center"]
     radius_point = spec["radius_point"]
     radius = spec.get("radius", "?")
-    print(f"[classy_blocks]   Building Sphere: center={center}, radius={radius}")
+    split = spec.get("split_axis", [0, 0, 1])
+    neg_split = [-split[0], -split[1], -split[2]]
+    print(f"[classy_blocks]   Building Sphere: center={center}, radius={radius}, "
+          f"split_axis={[round(s,3) for s in split]}")
 
-    upper = cb.Hemisphere(center, radius_point, [0, 0, 1])
-    lower = cb.Hemisphere(center, radius_point, [0, 0, -1])
+    upper = cb.Hemisphere(center, radius_point, split)
+    lower = cb.Hemisphere(center, radius_point, neg_split)
 
     for hemi in (upper, lower):
         _apply_round_chops(hemi, spec, axial_cells=max(1, int(spec["cells"][2])))

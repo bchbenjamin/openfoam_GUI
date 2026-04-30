@@ -35,6 +35,14 @@ class _MockVector:
     def __len__(self):
         return len(self._data)
 
+    def normalized(self):
+        """Return a unit-length copy of this vector."""
+        import math
+        length = math.sqrt(sum(v * v for v in self._data))
+        if length < 1e-12:
+            return _MockVector(self._data)
+        return _MockVector([v / length for v in self._data])
+
 
 class _MockMatrix:
     def __init__(self, translation=(0, 0, 0)):
@@ -49,6 +57,19 @@ class _MockMatrix:
             other[2] + self._tz,
         ])
 
+    def to_3x3(self):
+        """Returns a mock 3x3 identity rotation matrix."""
+        return _MockMatrix3x3()
+
+
+class _MockMatrix3x3:
+    """Mock 3x3 identity rotation (no rotation applied)."""
+    def __matmul__(self, other):
+        if isinstance(other, (list, tuple)):
+            other = _MockVector(other)
+        # Identity: return vector unchanged
+        return _MockVector([other[0], other[1], other[2]])
+
 
 def _make_mock_object(name, bound_box, matrix_world, props_dict=None):
     """Creates a mock Blender mesh object."""
@@ -57,6 +78,7 @@ def _make_mock_object(name, bound_box, matrix_world, props_dict=None):
     obj.type = 'MESH'
     obj.bound_box = bound_box
     obj.matrix_world = matrix_world
+    obj.scale = (1.0, 1.0, 1.0)  # Default: no unapplied transforms
 
     if props_dict is not None:
         class _Props:
@@ -341,6 +363,55 @@ def test_block_type_dispatch_revolve():
     assert len(result["blocks"]) == 0
 
 
+# ──────────────────────────────────────────────────────────────────────
+# NEW TESTS: Sphere split_axis, unapplied transforms
+# ──────────────────────────────────────────────────────────────────────
+
+def test_sphere_spec_has_split_axis():
+    """Sphere spec must include a split_axis field from matrix_world rotation."""
+    obj = _make_mock_object("Sphere", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
+                             {"block_type": "BOX", "cells": [10, 10, 10]})
+    mock_ctx = MagicMock()
+    mock_ctx.scene.objects = [obj]
+
+    result = _extract_with_forced_detection(mock_ctx, volume_ratio=math.pi/6)
+    assert len(result["blocks"]) == 1
+    spec = result["blocks"][0]
+    assert spec["type"] == "sphere"
+    assert "split_axis" in spec
+    # With identity rotation, split_axis should be [0, 0, 1]
+    assert abs(spec["split_axis"][0]) < 1e-6
+    assert abs(spec["split_axis"][1]) < 1e-6
+    assert abs(spec["split_axis"][2] - 1.0) < 1e-6
+
+
+def test_unapplied_transform_warning():
+    """Objects with scale != (1,1,1) produce a warning in the result."""
+    obj = _make_mock_object("ScaledCube", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
+                             {"block_type": "BOX", "cells": [10, 10, 10]})
+    # Simulate unapplied scale
+    obj.scale = (2.0, 2.0, 2.0)
+
+    mock_ctx = MagicMock()
+    mock_ctx.scene.objects = [obj]
+
+    result = _extract_with_forced_detection(mock_ctx, volume_ratio=1.0)
+    # Should still extract the block
+    assert len(result["blocks"]) == 1
+    assert result["blocks"][0]["type"] == "box"
+    # Should have a transform warning
+    assert len(result["warnings"]) >= 1
+    assert "unapplied scale" in result["warnings"][0].lower()
+
+
+def test_check_unapplied_transforms_no_warning():
+    """Objects with scale == (1,1,1) produce no warning."""
+    obj = _make_mock_object("NormalCube", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
+                             {"block_type": "BOX", "cells": [10, 10, 10]})
+    result = _ge._check_unapplied_transforms(obj)
+    assert result is None
+
+
 if __name__ == "__main__":
     test_box_identity()
     test_box_translated()
@@ -354,4 +425,7 @@ if __name__ == "__main__":
     test_empty_scene()
     test_block_type_dispatch_extrude()
     test_block_type_dispatch_revolve()
+    test_sphere_spec_has_split_axis()
+    test_unapplied_transform_warning()
+    test_check_unapplied_transforms_no_warning()
     print("\nAll geometry extractor unit tests PASSED!")

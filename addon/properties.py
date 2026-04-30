@@ -116,10 +116,7 @@ class ClassyMeshSceneProperties(bpy.types.PropertyGroup):
         name="Structure Warning",
         default=""
     )
-    last_generated_has_disk: bpy.props.BoolProperty(
-        name="Last Generated Has Disk",
-        default=False
-    )
+
     last_mesh_quality: bpy.props.StringProperty(
         name="Last Quality",
         default=""

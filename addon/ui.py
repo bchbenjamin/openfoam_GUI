@@ -51,6 +51,18 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                      text=f"Exclude '{obj.name}'", icon=icon)
 
             if not props.exclude_from_mesh:
+                # Unapplied transform warning
+                scale = obj.scale
+                if (abs(scale[0] - 1.0) > 1e-4 or
+                    abs(scale[1] - 1.0) > 1e-4 or
+                    abs(scale[2] - 1.0) > 1e-4):
+                    warn_row = header_box.row()
+                    warn_row.alert = True
+                    warn_row.label(
+                        text="⚠ Unapplied Scale — Ctrl+A to apply",
+                        icon='ERROR'
+                    )
+
                 # Common settings
                 header_box.prop(props, "cells")
                 header_box.prop(props, "patch_name")
@@ -119,6 +131,13 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
             layout.label(text=f"Last Quality: {quality}",
                          icon=scene_props.last_mesh_quality_icon)
 
+        # --- Primary action: full pipeline in one click ---
+        layout.separator()
+        run_all_row = layout.row()
+        run_all_row.scale_y = 1.5
+        run_all_row.operator("classy.run_all", text="▶ Run All", icon='PLAY')
+
+        # --- Individual pipeline steps (for debugging / partial runs) ---
         layout.separator()
         layout.operator("classy.generate_mesh", text="1. Generate blockMeshDict")
         layout.operator("classy.run_blockmesh", text="2. Run blockMesh")
