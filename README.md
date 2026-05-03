@@ -25,6 +25,10 @@ The goal of this project is the **Classy Blocks Integration (Structured Mesh)**:
 * Introduce advanced features such as terrain mapping, STL projection, and a CAD-like interface directly within Blender.
 * Streamline the workflow: Create a cube (or other shape) -> run `blockMesh` -> convert to VTK -> reload the resulting mesh in Blender for validation.
 
+## Future Implementation
+
+* To include a GUI-controlled run-time OpenFOAM path configuration directly through Blender.
+
 ## Roadblocks Faced While Using `classy_blocks`
 
 The primary roadblock encountered involves the strict topological requirements of the library. `classy_blocks` works exclusively for structured meshing. Consequently, taking a basic shape and arbitrarily modifying its geometry (e.g., pulling a single vertex out of planar alignment, or creating arbitrary internal holes) breaks the underlying hexahedral logic unless the modification strictly adheres to a shape supported by the `classy_blocks` API. 
@@ -68,11 +72,11 @@ This project relies on a carefully orchestrated stack of Python libraries:
 
 The add-on integrates smoothly into the Blender sidebar, providing immediate feedback and tools tailored for OpenFOAM preparation.
 
-![Add-on UI Panel](add-on_ui.png)
+![Add-on UI Panel](README_images/add-on_ui.png)
 *Figure 1: The main interface panel providing meshing options and generation triggers.*
 
-![Geometry Extraction Process](geometry_extraction.png)
+![Geometry Extraction Process](README_images/geometry_extraction.png)
 *Figure 2: Visualizing the transformation from a Blender mesh to a structured block.*
 
-![VTK Reload Result](vtk_reload.png)
+![VTK Reload Result](README_images/vtk_reload.png)
 *Figure 3: The final structured mesh reloaded into Blender for visual confirmation.*
