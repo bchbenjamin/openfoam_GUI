@@ -7,11 +7,9 @@
 ---
 
 <div align="center">
-  <video src="video.mp4" controls width="800">
-    Your browser does not support the video tag.
-  </video>
-  <br/>
-  <em>Video demonstration of the workflow (coming soon).</em>
+  <a href="https://youtu.be/iHxgoXFJzXU">
+    <img src="https://img.youtube.com/vi/iHxgoXFJzXU/maxresdefault.jpg" alt="Watch the video" style="width:100%; max-width:600px;">
+  </a>
 </div>
 
 ---
