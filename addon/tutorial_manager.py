@@ -123,7 +123,15 @@ class CLASSY_OT_copy_tutorial(bpy.types.Operator):
         except Exception as e:
             self.report({'ERROR'}, f"Failed to copy tutorial: {str(e)}")
             return {'CANCELLED'}
-            
+        
+        # Auto-set the pipeline's case_path to the newly copied case
+        if hasattr(context.scene, "classy_mesh_props"):
+            context.scene.classy_mesh_props.case_path = dest_path
+
+        # Force viewport UI redraw to prevent stale display
+        if hasattr(context, "area") and context.area:
+            context.area.tag_redraw()
+
         return {'FINISHED'}
 
 class CLASSY_PT_tutorial_manager(bpy.types.Panel):

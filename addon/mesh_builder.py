@@ -118,6 +118,9 @@ def _build_box(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
 
     # User-specified single-face terrain projection
     for face_name, terrain_stl in spec.get("stl_projections", {}).items():
+        if not terrain_stl or not terrain_stl.strip():
+            print(f"[classy_blocks]   WARNING: Skipping empty STL projection for face '{face_name}'")
+            continue
         _register_geometry(mesh, terrain_stl)
         box.project_side(face_name, terrain_stl)
         print(f"[classy_blocks]   Terrain projection: '{face_name}' → '{terrain_stl}'")

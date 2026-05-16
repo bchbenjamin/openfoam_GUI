@@ -2,6 +2,7 @@ import os
 import datetime
 import bpy
 from . import mesh_builder, foam_runner, geometry_extractor, vtk_importer, case_setup
+from . import foam_path_utils
 
 def set_status(context, status_msg):
     time_str = datetime.datetime.now().strftime("%H:%M:%S")
@@ -31,9 +32,15 @@ class CLASSY_OT_generate_mesh(bpy.types.Operator):
             set_status(context, "Failed: Case directory not set")
             return {'CANCELLED'}
 
-        case_path = os.path.expanduser(case_path)
-        # Strip trailing slashes for consistent path handling
-        case_path = case_path.rstrip('/')
+        case_path = foam_path_utils.resolve_case_path(case_path)
+
+        # Validate against FOAM_RUN environment context
+        foam_run = ""
+        if hasattr(context.scene, "foam_dirs"):
+            foam_run = context.scene.foam_dirs.foam_run_dir
+        validation = foam_path_utils.validate_case_path(case_path, foam_run)
+        for warning in validation["warnings"]:
+            self.report({'WARNING'}, warning)
 
         output_path = os.path.join(case_path, "system", "blockMeshDict")
 
@@ -113,7 +120,7 @@ class CLASSY_OT_run_blockmesh(bpy.types.Operator):
             set_status(context, "Failed: Case directory not set")
             return {'CANCELLED'}
 
-        case_path = os.path.expanduser(case_path).rstrip('/')
+        case_path = foam_path_utils.resolve_case_path(case_path)
 
         if not os.path.isdir(case_path):
             self.report({'ERROR'},
@@ -202,7 +209,7 @@ class CLASSY_OT_convert_vtk(bpy.types.Operator):
             set_status(context, "Failed: Case directory not set")
             return {'CANCELLED'}
 
-        case_path = os.path.expanduser(case_path).rstrip('/')
+        case_path = foam_path_utils.resolve_case_path(case_path)
 
         if not os.path.isdir(case_path):
             self.report({'ERROR'},
@@ -270,7 +277,7 @@ class CLASSY_OT_reload_mesh(bpy.types.Operator):
             set_status(context, "Failed: Case directory not set")
             return {'CANCELLED'}
 
-        case_path = os.path.expanduser(case_path).rstrip('/')
+        case_path = foam_path_utils.resolve_case_path(case_path)
 
         if not os.path.isdir(case_path):
             self.report({'ERROR'},
@@ -312,7 +319,7 @@ class CLASSY_OT_reload_mesh(bpy.types.Operator):
             return {'CANCELLED'}
 
 class MESH_OT_export_terrain_stl(bpy.types.Operator):
-    """(Feature placeholder) Export selected mesh as STL for terrain projection"""
+    """Export selected mesh as STL for terrain projection into the active case"""
     bl_idname = "mesh.classy_export_terrain"
     bl_label = "Export as Terrain STL"
 
@@ -324,7 +331,7 @@ class MESH_OT_export_terrain_stl(bpy.types.Operator):
             self.report({'ERROR'}, "Case directory is not set")
             return {'CANCELLED'}
 
-        case_path = os.path.expanduser(case_path)
+        case_path = foam_path_utils.resolve_case_path(case_path)
         stl_dir = os.path.join(case_path, "constant", "triSurface")
         os.makedirs(stl_dir, exist_ok=True)
         stl_path = os.path.join(stl_dir, "terrain.stl")
@@ -332,9 +339,11 @@ class MESH_OT_export_terrain_stl(bpy.types.Operator):
         try:
             bpy.ops.wm.stl_export(filepath=stl_path, export_selected_objects=True)
             self.report({'INFO'}, f"Terrain STL exported to {stl_path}")
+            set_status(context, f"Exported terrain STL")
             return {'FINISHED'}
         except Exception as e:
             self.report({'ERROR'}, f"Failed to export terrain STL: {str(e)}")
+            set_status(context, "Failed: STL export error")
             return {'CANCELLED'}
 
 

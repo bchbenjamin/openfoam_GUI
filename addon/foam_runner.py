@@ -15,10 +15,31 @@ import subprocess
 from typing import Tuple, Optional, Dict
 
 # -------------------------------------------------------
-# Update this path if your OpenFOAM 13 install is elsewhere.
-# Default Ubuntu install via apt: /opt/openfoam13/etc/bashrc
+# Default fallback bashrc path if addon preferences are not available
+# (e.g. when running outside Blender, or in tests).
+# In normal operation, operators always pass the user-configured
+# preferences.bashrc_path value from AddonPreferences.
 # -------------------------------------------------------
-OPENFOAM_13_BASHRC = "/opt/openfoam13/etc/bashrc"
+DEFAULT_BASHRC = "/opt/openfoam13/etc/bashrc"
+
+
+def get_bashrc_path(bashrc_path: str = "") -> str:
+    """
+    Resolves the OpenFOAM bashrc path.
+
+    Priority:
+      1. Explicitly passed bashrc_path (from operator calling code)
+      2. DEFAULT_BASHRC module-level fallback
+
+    Args:
+        bashrc_path: Path passed by the caller (usually from AddonPreferences).
+
+    Returns:
+        The resolved bashrc path string.
+    """
+    if bashrc_path and bashrc_path.strip():
+        return os.path.expanduser(bashrc_path.strip())
+    return DEFAULT_BASHRC
 
 def get_openfoam_environment(bashrc_path: str) -> Dict[str, str]:
     """
@@ -54,7 +75,7 @@ def get_openfoam_environment(bashrc_path: str) -> Dict[str, str]:
             env[key] = value
     return env
 
-def run_blockmesh(case_path: str, openfoam_bashrc: str) -> Tuple[int, str, str]:
+def run_blockmesh(case_path: str, openfoam_bashrc: str = "") -> Tuple[int, str, str]:
     """
     Runs: blockMesh -case <case_path>
     Works identically in OpenFOAM 13 (blockMesh command is unchanged).
@@ -62,7 +83,8 @@ def run_blockmesh(case_path: str, openfoam_bashrc: str) -> Tuple[int, str, str]:
     Returns: (return_code, stdout, stderr)
     A return_code of 0 means success.
     """
-    env = get_openfoam_environment(openfoam_bashrc)
+    resolved_bashrc = get_bashrc_path(openfoam_bashrc)
+    env = get_openfoam_environment(resolved_bashrc)
     case_path = os.path.expanduser(case_path)
 
     # Validate the case directory and blockMeshDict exist before running
@@ -82,7 +104,7 @@ def run_blockmesh(case_path: str, openfoam_bashrc: str) -> Tuple[int, str, str]:
     )
     return result.returncode, result.stdout, result.stderr
 
-def run_foam_to_vtk(case_path: str, openfoam_bashrc: str) -> Tuple[int, str, str]:
+def run_foam_to_vtk(case_path: str, openfoam_bashrc: str = "") -> Tuple[int, str, str]:
     """
     Runs: foamToVTK -case <case_path>
 
@@ -94,7 +116,8 @@ NOTE for OpenFOAM 13: foamToVTK still works and is the method used here
 
     Returns: (return_code, stdout, stderr)
     """
-    env = get_openfoam_environment(openfoam_bashrc)
+    resolved_bashrc = get_bashrc_path(openfoam_bashrc)
+    env = get_openfoam_environment(resolved_bashrc)
     case_path = os.path.expanduser(case_path)
 
     poly_mesh = os.path.join(case_path, "constant", "polyMesh")

@@ -3,6 +3,7 @@ import bpy
 from . import properties, ui, operators, geometry_extractor, vtk_importer, preferences
 from . import foam_directories
 from . import tutorial_manager
+from . import auto_update
 
 classes = [
     preferences.ClassyBlocksPreferences,
@@ -30,8 +31,10 @@ def register():
     bpy.types.Scene.classy_mesh_props = bpy.props.PointerProperty(type=properties.ClassyMeshSceneProperties)
     bpy.types.Scene.foam_dirs = bpy.props.PointerProperty(type=foam_directories.FoamDirectoryProperties)
     bpy.types.Scene.tutorial_manager = bpy.props.PointerProperty(type=tutorial_manager.TutorialManagerProperties)
+    auto_update.register()
 
 def unregister():
+    auto_update.unregister()
     del bpy.types.Scene.foam_dirs
     del bpy.types.Scene.tutorial_manager
     for cls in reversed(classes):

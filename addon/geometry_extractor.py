@@ -428,13 +428,16 @@ def _build_box_spec(obj, props, p_min, p_max):
     # Optional user-specified terrain STL projection
     if props:
         stl_file = getattr(props, "stl_file", "") or ""
-        if stl_file:
+        # Blender's FILE_PATH subtype may return "//" (blend-relative prefix)
+        # even when the user never set a file. Strip it and check for a real name.
+        stl_basename = os.path.basename(stl_file.strip())
+        if stl_basename:
             face_name = getattr(props, "stl_projection_face", "top")
             spec["stl_projections"] = {
-                face_name: os.path.basename(stl_file)
+                face_name: stl_basename
             }
             print(f"[classy_blocks]   User STL projection: "
-                  f"'{face_name}' → '{os.path.basename(stl_file)}'")
+                  f"'{face_name}' → '{stl_basename}'")
 
     return spec
 
