@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="logo.png" alt="Classy Blender Mesh Logo" width="200" />
+  <img src="README_images/logo.png" alt="Classy Blender Mesh Logo" width="200" />
   <h1>Classy Blender Mesh</h1>
   <p>Seamlessly bridging Blender's intuitive 3D modeling with OpenFOAM's structured hex-meshing.</p>
 </div>
