@@ -24,6 +24,7 @@ def _build_mock_bpy():
     bpy_mod.types = types.ModuleType("bpy.types")
     bpy_mod.props = types.ModuleType("bpy.props")
     bpy_mod.utils = types.ModuleType("bpy.utils")
+    bpy_mod.ops = mock.MagicMock()
 
     # Minimal stubs for Blender types
     bpy_mod.types.Operator = object
@@ -119,6 +120,18 @@ class TestTutorialCopySetsPath:
 
         expected_dest = os.path.join(str(run_dir), "my_test_case")
         assert result == {'FINISHED'}
+        
+        # Verify the popup operator was called with the correct dest_path
+        import sys
+        bpy = sys.modules["bpy"]
+        bpy.ops.classy.confirm_case_path.assert_called_once_with('INVOKE_DEFAULT', dest_path=expected_dest)
+
+        # Now simulate the user accepting the popup by running the confirm operator
+        confirm_op = tm.CLASSY_OT_confirm_case_path()
+        confirm_op.dest_path = expected_dest
+        confirm_result = confirm_op.execute(ctx)
+
+        assert confirm_result == {'FINISHED'}
         assert ctx.scene.classy_mesh_props.case_path == expected_dest
 
     def test_copy_failure_does_not_set_case_path(self, tmp_path, mock_bpy_and_import):

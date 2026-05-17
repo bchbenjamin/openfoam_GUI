@@ -124,14 +124,31 @@ class CLASSY_OT_copy_tutorial(bpy.types.Operator):
             self.report({'ERROR'}, f"Failed to copy tutorial: {str(e)}")
             return {'CANCELLED'}
         
-        # Auto-set the pipeline's case_path to the newly copied case
-        if hasattr(context.scene, "classy_mesh_props"):
-            context.scene.classy_mesh_props.case_path = dest_path
+        # Ask the user if they want to set the active case path
+        bpy.ops.classy.confirm_case_path('INVOKE_DEFAULT', dest_path=dest_path)
+        return {'FINISHED'}
 
-        # Force viewport UI redraw to prevent stale display
+class CLASSY_OT_confirm_case_path(bpy.types.Operator):
+    bl_idname = "classy.confirm_case_path"
+    bl_label = "Set as Active Case?"
+    bl_description = "Set the newly copied tutorial as the active case directory"
+    bl_options = {'REGISTER', 'INTERNAL'}
+    
+    dest_path: bpy.props.StringProperty()
+    
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self, width=400)
+        
+    def draw(self, context):
+        layout = self.layout
+        layout.label(text="Tutorial copied successfully!", icon='INFO')
+        layout.label(text="Do you want to set this as the active case directory?")
+        
+    def execute(self, context):
+        if hasattr(context.scene, "classy_mesh_props"):
+            context.scene.classy_mesh_props.case_path = self.dest_path
         if hasattr(context, "area") and context.area:
             context.area.tag_redraw()
-
         return {'FINISHED'}
 
 class CLASSY_PT_tutorial_manager(bpy.types.Panel):

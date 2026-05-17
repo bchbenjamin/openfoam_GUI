@@ -21,6 +21,7 @@ classes = [
     tutorial_manager.TutorialManagerProperties,
     tutorial_manager.CLASSY_OT_search_tutorials,
     tutorial_manager.CLASSY_OT_copy_tutorial,
+    tutorial_manager.CLASSY_OT_confirm_case_path,
     tutorial_manager.CLASSY_PT_tutorial_manager,
 ]
 

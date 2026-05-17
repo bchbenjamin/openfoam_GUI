@@ -114,10 +114,12 @@ def load_vtk_as_blender_mesh(vtk_path, mesh_name="BlockMesh_Result"):
     obj = bpy.data.objects.new(mesh_name, blender_mesh)
     bpy.context.collection.objects.link(obj)
 
-    # 10. Set location to world origin and make active
+    # 10. Set location to world origin, set active, and exclude from future meshing
     obj.location = (0, 0, 0)
     bpy.context.view_layer.objects.active = obj
     obj.select_set(True)
+    if hasattr(obj, "classy_block_props"):
+        obj.classy_block_props.exclude_from_mesh = True
 
     print(f"[vtk_importer]   Created Blender object: '{mesh_name}' "
           f"({len(vertices)} verts, {len(faces)} faces)")
