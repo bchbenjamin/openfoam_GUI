@@ -20,7 +20,10 @@ import os
 import glob
 
 import bpy
-import pyvista as pv
+try:
+    import pyvista as pv
+except ImportError:
+    pv = None  # Handled gracefully by dependencies check
 
 
 def find_vtk_files(case_path):
@@ -76,7 +79,10 @@ def load_vtk_as_blender_mesh(vtk_path, mesh_name="BlockMesh_Result"):
         )
 
     # 2. Extract the surface (boundary faces) from the volume mesh
-    surface = pv_mesh.extract_surface()
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        surface = pv_mesh.extract_surface()
 
     # 3. Check for empty surface
     if surface.n_cells == 0:
@@ -86,45 +92,47 @@ def load_vtk_as_blender_mesh(vtk_path, mesh_name="BlockMesh_Result"):
             "or the file may be empty."
         )
 
-    # 4. Log mesh statistics for debugging (visible in Blender System Console)
+    # 4. Log mesh statistics
     print(f"[vtk_importer] Loading: {vtk_path}")
     print(f"[vtk_importer]   Volume: {pv_mesh.n_points} points, {pv_mesh.n_cells} cells")
     print(f"[vtk_importer]   Surface: {surface.n_points} points, {surface.n_cells} faces")
-    print(f"[vtk_importer]   Bounds: {[round(b, 4) for b in surface.bounds]}")
 
-    # 5. Extract vertices (Nx3 numpy → list of tuples for Blender)
-    vertices = [tuple(v) for v in surface.points.tolist()]
+    # Split into disconnected bodies
+    bodies = surface.split_bodies()
+    
+    # Remove old objects
+    _remove_existing_objects_with_prefix(mesh_name)
 
-    # 6. Extract and parse faces
-    # PyVista >= 0.38 uses .get_connectivity_and_offset() but .faces still works
-    raw_faces = surface.faces
-    faces = _parse_pyvista_faces(raw_faces)
+    created_objs = []
+    for i, body in enumerate(bodies):
+        if body.n_cells == 0:
+            continue
+            
+        vertices = [tuple(v) for v in body.points.tolist()]
+        faces = _parse_pyvista_faces(body.faces)
+        
+        name = f"{mesh_name}_{i+1}" if len(bodies) > 1 else mesh_name
+        
+        blender_mesh = bpy.data.meshes.new(name)
+        blender_mesh.from_pydata(vertices, [], faces)
+        blender_mesh.update()
+        
+        obj = bpy.data.objects.new(name, blender_mesh)
+        bpy.context.collection.objects.link(obj)
+        
+        obj.location = (0, 0, 0)
+        obj.select_set(True)
+        if hasattr(obj, "classy_block_props"):
+            obj.classy_block_props.exclude_from_mesh = True
+            
+        created_objs.append(obj)
+        print(f"[vtk_importer]   Created Blender object: '{name}' "
+              f"({len(vertices)} verts, {len(faces)} faces)")
 
-    print(f"[vtk_importer]   Parsed {len(vertices)} vertices, {len(faces)} faces")
+    if created_objs:
+        bpy.context.view_layer.objects.active = created_objs[0]
 
-    # 7. Remove any existing object with the same name (for re-import)
-    _remove_existing_object(mesh_name)
-
-    # 8. Create Blender mesh data
-    blender_mesh = bpy.data.meshes.new(mesh_name)
-    blender_mesh.from_pydata(vertices, [], faces)
-    blender_mesh.update()
-
-    # 9. Create Blender object and link to active collection
-    obj = bpy.data.objects.new(mesh_name, blender_mesh)
-    bpy.context.collection.objects.link(obj)
-
-    # 10. Set location to world origin, set active, and exclude from future meshing
-    obj.location = (0, 0, 0)
-    bpy.context.view_layer.objects.active = obj
-    obj.select_set(True)
-    if hasattr(obj, "classy_block_props"):
-        obj.classy_block_props.exclude_from_mesh = True
-
-    print(f"[vtk_importer]   Created Blender object: '{mesh_name}' "
-          f"({len(vertices)} verts, {len(faces)} faces)")
-
-    return obj
+    return created_objs[0] if created_objs else None
 
 
 def _parse_pyvista_faces(pv_faces):
@@ -159,29 +167,28 @@ def _parse_pyvista_faces(pv_faces):
     return faces
 
 
-def _remove_existing_object(name):
+def _remove_existing_objects_with_prefix(prefix):
     """
-    Removes an existing Blender object and its mesh data if present.
-    Used to clean up before re-importing the mesh.
+    Removes all existing Blender objects and their mesh data whose names start
+    with the given prefix. Used to clean up before re-importing the mesh.
 
     Args:
-        name: Name of the Blender object to remove.
+        prefix: Name prefix of the Blender objects to remove.
     """
-    if name not in bpy.data.objects:
-        return
+    objs_to_remove = [obj for obj in bpy.data.objects if obj.name.startswith(prefix)]
+    
+    for obj in objs_to_remove:
+        mesh_data = obj.data if obj.type == 'MESH' else None
 
-    obj = bpy.data.objects[name]
-    mesh_data = obj.data if obj.type == 'MESH' else None
+        # Unlink from all collections
+        for collection in obj.users_collection:
+            collection.objects.unlink(obj)
 
-    # Unlink from all collections
-    for collection in obj.users_collection:
-        collection.objects.unlink(obj)
+        # Remove the object
+        bpy.data.objects.remove(obj, do_unlink=True)
 
-    # Remove the object
-    bpy.data.objects.remove(obj, do_unlink=True)
+        # Remove orphan mesh data
+        if mesh_data and mesh_data.users == 0:
+            bpy.data.meshes.remove(mesh_data)
 
-    # Remove orphan mesh data
-    if mesh_data and mesh_data.users == 0:
-        bpy.data.meshes.remove(mesh_data)
-
-    print(f"[vtk_importer]   Removed existing object: '{name}'")
+        print(f"[vtk_importer]   Removed existing object: '{obj.name}'")

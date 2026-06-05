@@ -20,7 +20,15 @@ from typing import Tuple, Optional, Dict
 # In normal operation, operators always pass the user-configured
 # preferences.bashrc_path value from AddonPreferences.
 # -------------------------------------------------------
-DEFAULT_BASHRC = "/opt/openfoam13/etc/bashrc"
+def get_default_bashrc() -> str:
+    addon_dir = os.path.dirname(os.path.abspath(__file__))
+    for name in ["OpenFOAM-13", "openfoam13"]:
+        local_bashrc = os.path.join(addon_dir, name, "etc", "bashrc")
+        if os.path.exists(local_bashrc):
+            return local_bashrc
+    return "/opt/openfoam13/etc/bashrc"
+
+DEFAULT_BASHRC = get_default_bashrc()
 
 
 def get_bashrc_path(bashrc_path: str = "") -> str:

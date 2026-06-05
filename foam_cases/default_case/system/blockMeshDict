@@ -2,7 +2,7 @@
 | =========                |                                                 |
 | \      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
 |  \    /   O peration     | Script: /opt/blender-4.1/blender                |
-|   \  /    A nd           | Time: 2026-05-28 16:12:45.678907                |
+|   \  /    A nd           | Time: 2026-06-06 00:18:45.300491                |
 |    \/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -28,7 +28,7 @@ vertices
 
 blocks
 (
-	hex ( 0 1 2 3 4 5 6 7 )  ( 10 10 10 ) simpleGrading ( 1.0 1.0 1.0 ) // 0 
+	hex ( 0 1 2 3 4 5 6 7 ) Cube ( 10 10 10 ) simpleGrading ( 1.0 1.0 1.0 ) // 0 
 );
 
 edges

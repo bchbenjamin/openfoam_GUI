@@ -1,15 +1,23 @@
+from __future__ import annotations
 """
 addon/mesh_builder.py
 Calls classy_blocks API to build blockMeshDict from a geometry spec dict.
 No Blender imports — fully testable with plain Python/pytest.
 
 SUPPORTED BLOCK TYPES:
-  - box:     cb.Box(p_min, p_max)
+  - box:      cb.Box(p_min, p_max)
   - cylinder: cb.Cylinder(axis_pt1, axis_pt2, radius_point)
-  - sphere:  two cb.Hemisphere shapes
-  - disk:    cb.FourCoreDisk(...) extruded by a thin amount
-  - extrude: cb.Extrude(cb.Face(4pts), vector)
-  - revolve: cb.Revolve(cb.Face(4pts), angle_rad, axis, origin)
+  - frustum:  cb.Frustum(axis_pt1, axis_pt2, radius_pt1, radius_2)
+  - sphere:   two cb.Hemisphere shapes
+  - disk:     cb.FourCoreDisk(...) extruded by a thin amount
+  - extrude:  cb.Extrude(cb.Face(4pts), vector)
+  - revolve:  cb.Revolve(cb.Face(4pts), angle_rad, axis, origin)
+  - loft:     cb.Loft(cb.Face(bottom), cb.Face(top))
+  - wedge:    cb.Wedge(cb.Face(4pts), angle)
+
+SHAPE CHAINING:
+  - Cylinder.chain(source, length) — extend a pipe from another round shape
+  - Frustum.chain(source, length, radius_2) — taper a pipe connection
 
 TERRAIN PROJECTION (box only):
   - Single-face projection onto an STL surface via box.project_side()
@@ -27,7 +35,10 @@ CALLED BY: operators.py -> CLASSY_OT_generate_mesh.execute()
 
 import os
 import math
-import classy_blocks as cb
+try:
+    import classy_blocks as cb
+except ImportError:
+    cb = None  # Handled gracefully by dependencies check
 from typing import Dict, Any
 
 
@@ -54,6 +65,9 @@ def _apply_chops(block, spec: Dict[str, Any]) -> None:
         else:
             block.chop(axis, count=cells[axis],
                        c2c_expansion=grading[axis])
+                       
+    if "name" in spec:
+        block.set_cell_zone(spec["name"])
 
 
 def _apply_round_chops(shape, spec: Dict[str, Any], axial_cells: int | None = None) -> None:
@@ -73,17 +87,21 @@ def _apply_round_chops(shape, spec: Dict[str, Any], axial_cells: int | None = No
         shape.chop_radial(count=radial_cells, start_size=start_size)
         shape.chop_tangential(count=tangential_cells, start_size=start_size)
         shape.chop_axial(count=axial_cells, start_size=start_size)
-        return
-
-    if grading_type == "SYMMETRIC":
+    elif grading_type == "SYMMETRIC":
         shape.chop_radial(start_size=start_size, end_size=end_size)
         shape.chop_tangential(start_size=start_size, end_size=end_size)
         shape.chop_axial(start_size=start_size, end_size=end_size)
-        return
-
-    shape.chop_radial(count=radial_cells, c2c_expansion=grading[0])
-    shape.chop_tangential(count=tangential_cells, c2c_expansion=grading[1])
-    shape.chop_axial(count=axial_cells, c2c_expansion=grading[2])
+    else:
+        shape.chop_radial(count=radial_cells, c2c_expansion=grading[0])
+        shape.chop_tangential(count=tangential_cells, c2c_expansion=grading[1])
+        shape.chop_axial(count=axial_cells, c2c_expansion=grading[2])
+        
+    if "name" in spec:
+        if hasattr(shape, 'set_cell_zone'):
+            shape.set_cell_zone(spec["name"])
+        elif hasattr(shape, 'lofts'):
+            for operation in shape.lofts:
+                operation.set_cell_zone(spec["name"])
 
 
 def _register_geometry(mesh: cb.Mesh, stl_name: str) -> None:
@@ -114,6 +132,10 @@ def _build_box(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     """
     print(f"[classy_blocks]   Building Box: p_min={spec['p_min']}, p_max={spec['p_max']}")
     box = cb.Box(spec["p_min"], spec["p_max"])
+    
+    if spec.get("transform_matrix"):
+        box.transform(spec["transform_matrix"])
+        
     _apply_chops(box, spec)
 
     # User-specified single-face terrain projection
@@ -149,6 +171,7 @@ def _build_cylinder(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     cyl = cb.Cylinder(axis_pt1, axis_pt2, radius_point)
     _apply_round_chops(cyl, spec)
     mesh.add(cyl)
+    return cyl
 
 
 def _build_sphere(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
@@ -165,9 +188,16 @@ def _build_sphere(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     neg_split = [-split[0], -split[1], -split[2]]
     print(f"[classy_blocks]   Building Sphere: center={center}, radius={radius}, "
           f"split_axis={[round(s,3) for s in split]}")
+          
+    shared_label = f"sphere_{spec.get('name', 'obj')}"
+    
+    class SharedHemisphere(cb.Hemisphere):
+        @property
+        def geometry_label(self):
+            return shared_label
 
-    upper = cb.Hemisphere(center, radius_point, split)
-    lower = cb.Hemisphere(center, radius_point, neg_split)
+    upper = SharedHemisphere(center, radius_point, split)
+    lower = SharedHemisphere(center, radius_point, neg_split)
 
     for hemi in (upper, lower):
         _apply_round_chops(hemi, spec, axial_cells=max(1, int(spec["cells"][2])))
@@ -239,41 +269,154 @@ def _build_revolve(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     mesh.add(revolve)
 
 
+def _build_frustum(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
+    """
+    Builds a Frustum (truncated cone) block.
+
+    cb.Frustum(axis_point_1, axis_point_2, radius_point_1, radius_2):
+      - axis_point_1, axis_point_2: endpoints of the frustum axis
+      - radius_point_1: a point ON the surface at axis_pt1 end
+      - radius_2: scalar end radius (NOT a point!)
+    """
+    axis_pt1 = spec["axis_pt1"]
+    axis_pt2 = spec["axis_pt2"]
+    radius_point_1 = spec["radius_point_1"]
+    radius_2 = spec["radius_2"]
+    print(f"[classy_blocks]   Building Frustum: "
+          f"axis=[{axis_pt1}→{axis_pt2}], r1={spec.get('radius_1', '?')}, r2={radius_2}")
+
+    frustum = cb.Frustum(axis_pt1, axis_pt2, radius_point_1, radius_2)
+    _apply_round_chops(frustum, spec)
+    mesh.add(frustum)
+    return frustum
+
+
+def _build_loft(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
+    """
+    Builds a Loft block connecting two quad faces (bottom → top).
+
+    cb.Loft(bottom_face, top_face):
+      Both faces must be cb.Face objects wrapping 4 [x,y,z] points.
+    """
+    bottom_pts = spec["bottom_face"]
+    top_pts = spec["top_face"]
+    print(f"[classy_blocks]   Building Loft: bottom={bottom_pts[0]}..., "
+          f"top={top_pts[0]}...")
+
+    bottom_face = cb.Face(bottom_pts)
+    top_face = cb.Face(top_pts)
+    loft = cb.Loft(bottom_face, top_face)
+    _apply_chops(loft, spec)
+    mesh.add(loft)
+
+
+def _build_wedge(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
+    """
+    Builds a Wedge block for axisymmetric 2D cases.
+
+    cb.Wedge(face, angle):
+      - face: cb.Face wrapping 4 [x,y,z] points
+      - angle: total wedge angle in radians (default ~2 degrees)
+
+    The wedge revolves around the x-axis symmetrically by ±angle/2.
+    Used for axisymmetric CFD (pipe flow, nozzles, etc.).
+    """
+    face_pts = spec["face"]
+    angle_deg = spec.get("angle_deg", 2.0)
+    angle_rad = math.radians(angle_deg)
+    print(f"[classy_blocks]   Building Wedge: angle={angle_deg}°, "
+          f"face={face_pts[0]}...")
+
+    face = cb.Face(face_pts)
+    axis = spec.get("axis", [1, 0, 0])
+    origin = spec.get("origin", [0, 0, 0])
+    wedge = cb.Wedge(face, angle_rad, axis, origin)
+    _apply_chops(wedge, spec)
+    mesh.add(wedge)
+
+
 # ─────────────────────── DISPATCHER ───────────────────────
+
+_BUILDERS = {
+    "box":         _build_box,
+    "cylinder":    _build_cylinder,
+    "frustum":     _build_frustum,
+    "sphere":      _build_sphere,
+    "disk":        _build_disk,
+    "extrude":     _build_extrude,
+    "revolve":     _build_revolve,
+    "loft":        _build_loft,
+    "wedge":       _build_wedge,
+    "unsupported": _build_unsupported,
+}
+
 
 def build_block(mesh: cb.Mesh, spec: Dict[str, Any]) -> bool:
     """
     Dispatches block building by type.
 
-    Supported types: box, cylinder, sphere, disk, extrude, revolve.
+    Supported types: box, cylinder, frustum, sphere, disk, extrude,
+                     revolve, loft, wedge.
+
+    Returns True if a block was actually built, False if skipped.
     """
     block_type = spec.get("type", "box")
+    builder = _BUILDERS.get(block_type)
 
-    if block_type == "box":
-        _build_box(mesh, spec)
-        return True
-    elif block_type == "cylinder":
-        _build_cylinder(mesh, spec)
-        return True
-    elif block_type == "sphere":
-        _build_sphere(mesh, spec)
-        return True
-    elif block_type == "disk":
-        _build_disk(mesh, spec)
-        return True
-    elif block_type == "extrude":
-        _build_extrude(mesh, spec)
-        return True
-    elif block_type == "revolve":
-        _build_revolve(mesh, spec)
-        return True
-    elif block_type == "unsupported":
-        _build_unsupported(mesh, spec)
-        return False
-    else:
+    if builder is None:
         raise ValueError(
             f"Unknown block type '{block_type}' for block '{spec.get('name')}'"
         )
+
+    result = builder(mesh, spec)
+    # unsupported returns None without adding anything
+    return block_type != "unsupported"
+
+
+# ─────────────────────── SHAPE CHAINING ───────────────────────
+
+
+def _build_chained_block(mesh: cb.Mesh, spec: Dict[str, Any],
+                         source_shape) -> bool:
+    """
+    Builds a block by chaining it from an existing round shape.
+
+    Uses the .chain() classmethod on Cylinder/Frustum to extend a pipe
+    from the end face of the source shape.
+
+    Args:
+        mesh: The cb.Mesh to add the shape to.
+        spec: Block spec dict with chain_source, chain_length, chain_radius_2.
+        source_shape: The classy_blocks shape object to chain from.
+
+    Returns True if successfully chained.
+    """
+    chain_length = spec.get("chain_length", 1.0)
+    chain_radius_2 = spec.get("chain_radius_2", 0.0)
+    block_name = spec.get("name", "unnamed")
+
+    try:
+        if chain_radius_2 > 0:
+            # Chain as a frustum (tapered connection)
+            print(f"[classy_blocks]   Chaining Frustum from source: "
+                  f"length={chain_length}, end_radius={chain_radius_2}")
+            chained = cb.Frustum.chain(
+                source_shape, chain_length, chain_radius_2
+            )
+        else:
+            # Chain as a cylinder (same radius)
+            print(f"[classy_blocks]   Chaining Cylinder from source: "
+                  f"length={chain_length}")
+            chained = cb.Cylinder.chain(source_shape, chain_length)
+
+        _apply_round_chops(chained, spec)
+        mesh.add(chained)
+        return True
+
+    except Exception as e:
+        print(f"[classy_blocks]   ERROR chaining '{block_name}': {e}")
+        import traceback; traceback.print_exc()
+        return False
 
 
 # ─────────────────────── MAIN ENTRY POINT ───────────────────────
@@ -281,6 +424,10 @@ def build_block(mesh: cb.Mesh, spec: Dict[str, Any]) -> bool:
 def build_from_spec(spec: Dict[str, Any], output_path: str) -> None:
     """
     Takes a geometry spec dict and writes a blockMeshDict to output_path.
+
+    Two-pass strategy for shape chaining:
+      Pass 1: Build all non-chained blocks, store their cb objects by name.
+      Pass 2: Build chained blocks using their source's cb object.
     """
     output_dir = os.path.dirname(output_path)
     if not os.path.isdir(output_dir):
@@ -292,13 +439,49 @@ def build_from_spec(spec: Dict[str, Any], output_path: str) -> None:
     mesh = cb.Mesh()
     built_blocks = 0
 
+    # Separate chained vs non-chained blocks
+    non_chained = []
+    chained = []
     for block_spec in spec["blocks"]:
+        if block_spec.get("chain_source"):
+            chained.append(block_spec)
+        else:
+            non_chained.append(block_spec)
+
+    # --- Pass 1: Build all non-chained blocks ---
+    built_shapes = {}  # name -> classy_blocks shape object (for chaining)
+    for block_spec in non_chained:
         block_name = block_spec.get("name", "unnamed")
         block_type = block_spec.get("type", "box")
         grading_type = block_spec.get("grading_type", "RATIO")
         print(f"[classy_blocks] Building {block_type} block: '{block_name}' "
               f"(grading: {grading_type})")
-        if build_block(mesh, block_spec):
+
+        # For round shapes, capture the returned object for chaining
+        if block_type in ("cylinder", "frustum"):
+            builder = _BUILDERS.get(block_type)
+            if builder:
+                result = builder(mesh, block_spec)
+                if result is not None:
+                    built_shapes[block_name] = result
+                built_blocks += 1
+        elif build_block(mesh, block_spec):
+            built_blocks += 1
+
+    # --- Pass 2: Build chained blocks ---
+    for block_spec in chained:
+        block_name = block_spec.get("name", "unnamed")
+        source_name = block_spec["chain_source"]
+        print(f"[classy_blocks] Building chained block: '{block_name}' "
+              f"(from '{source_name}')")
+
+        source_shape = built_shapes.get(source_name)
+        if source_shape is None:
+            print(f"[classy_blocks]   ERROR: Chain source '{source_name}' not "
+                  f"found. Available sources: {list(built_shapes.keys())}")
+            continue
+
+        if _build_chained_block(mesh, block_spec, source_shape):
             built_blocks += 1
 
     if built_blocks == 0:

@@ -6,6 +6,11 @@ class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
         default=False,
         description="Exclude this object from the blockMeshDict generation"
     )
+    force_include: bpy.props.BoolProperty(
+        name="Force Include",
+        default=False,
+        description="Include this object even if it's detected as 2D/unsupported"
+    )
     cells: bpy.props.IntVectorProperty(name="Cells X/Y/Z", default=(10, 10, 10), min=1)
     patch_name: bpy.props.StringProperty(name="Patch Name", default="defaultWall")
 
@@ -17,6 +22,8 @@ class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
             ("BOX",     "Box",     "Axis-aligned rectangular block (uses bounding box)"),
             ("EXTRUDE", "Extrude", "Extrude a quad face along a vector"),
             ("REVOLVE", "Revolve", "Revolve a quad face around an axis"),
+            ("LOFT",    "Loft",    "Connect two quad faces (bottom to top)"),
+            ("WEDGE",   "Wedge",   "Axisymmetric 2D case (thin wedge slice)"),
         ],
         default="BOX",
     )
@@ -88,6 +95,47 @@ class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
     )
     revolve_origin: bpy.props.FloatVectorProperty(
         name="Axis Origin", default=(0.0, 0.0, 0.0), size=3,
+    )
+
+    # --- LOFT parameters ---
+    loft_bottom_face_index: bpy.props.IntProperty(
+        name="Bottom Face Index",
+        description="Index of the bottom quad face (from Edit Mode)",
+        default=0, min=0,
+    )
+    loft_top_face_index: bpy.props.IntProperty(
+        name="Top Face Index",
+        description="Index of the top quad face (from Edit Mode)",
+        default=1, min=0,
+    )
+
+    # --- WEDGE parameters ---
+    wedge_face_index: bpy.props.IntProperty(
+        name="Face Index",
+        description="Index of the quad face to create wedge from (from Edit Mode)",
+        default=0, min=0,
+    )
+    wedge_angle: bpy.props.FloatProperty(
+        name="Wedge Angle (degrees)",
+        description="Total wedge angle — use 2 to 5 degrees for axisymmetric CFD",
+        default=2.0, min=0.1, max=30.0,
+    )
+
+    # --- Shape Chaining parameters ---
+    chain_source: bpy.props.StringProperty(
+        name="Chain From",
+        description="Name of the source object to chain this shape from",
+        default="",
+    )
+    chain_length: bpy.props.FloatProperty(
+        name="Chain Length (m)",
+        description="Length of the chained pipe segment",
+        default=1.0, min=0.001,
+    )
+    chain_radius_2: bpy.props.FloatProperty(
+        name="End Radius (m)",
+        description="End radius for frustum chains (0 = same as source)",
+        default=0.0, min=0.0,
     )
 
 

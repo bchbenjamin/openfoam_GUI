@@ -5,11 +5,16 @@ import time
 _last_update_time = 0.0
 # Flag to indicate if a timer is already scheduled
 _timer_scheduled = False
+# Lock to prevent infinite depsgraph update loops during VTK import
+is_auto_updating = False
 
 def run_pipeline_if_needed():
-    global _timer_scheduled
+    global _timer_scheduled, is_auto_updating
     _timer_scheduled = False
     
+    if is_auto_updating:
+        return None
+        
     context = bpy.context
     if not hasattr(context, "scene") or not context.scene:
         return None
@@ -37,17 +42,42 @@ def run_pipeline_if_needed():
         return None
         
     try:
+        is_auto_updating = True
         # Run the pipeline
         bpy.ops.classy.run_all()
     except Exception as e:
         print(f"Auto-update failed: {e}")
+    finally:
+        is_auto_updating = False
         
     return None
 
+def trigger_update_timer(delay):
+    global _last_update_time, _timer_scheduled
+    _last_update_time = time.time()
+    
+    if not _timer_scheduled:
+        _timer_scheduled = True
+        
+        def timer_wrapper():
+            global _timer_scheduled
+            now = time.time()
+            time_since_last_update = now - _last_update_time
+            
+            if time_since_last_update >= delay:
+                run_pipeline_if_needed()
+                return None
+            else:
+                return delay - time_since_last_update
+                
+        bpy.app.timers.register(timer_wrapper, first_interval=delay)
+
+@bpy.app.handlers.persistent
 def auto_update_handler(scene, depsgraph):
     """Depsgraph handler that schedules the auto-update timer."""
-    global _last_update_time, _timer_scheduled
-    
+    if is_auto_updating:
+        return
+        
     # Only care about active updates (geometry changes, object added/removed)
     if not depsgraph.updates:
         return
@@ -59,33 +89,31 @@ def auto_update_handler(scene, depsgraph):
     prefs = getattr(bpy.context.preferences.addons.get(__package__), "preferences", None)
     delay = prefs.auto_update_delay if prefs else 2.0
     
-    # Record the time of this update
-    _last_update_time = time.time()
-    
-    # If a timer is not already scheduled, schedule one
-    if not _timer_scheduled:
-        _timer_scheduled = True
+    trigger_update_timer(delay)
+
+@bpy.app.handlers.persistent
+def undo_handler(scene, *args):
+    """Handler to trigger auto-update on Undo"""
+    if is_auto_updating:
+        return
         
-        # We need a wrapper that checks if the delay has passed since the *last* update
-        def timer_wrapper():
-            global _timer_scheduled
-            now = time.time()
-            time_since_last_update = now - _last_update_time
-            
-            if time_since_last_update >= delay:
-                # Enough time has passed with no new updates, run it
-                run_pipeline_if_needed()
-                return None # Don't run again
-            else:
-                # Not enough time has passed (a new update came in), reschedule
-                return delay - time_since_last_update
-                
-        bpy.app.timers.register(timer_wrapper, first_interval=delay)
+    scene_props = getattr(scene, "classy_mesh_props", None)
+    if not scene_props or not scene_props.use_auto_update:
+        return
+        
+    prefs = getattr(bpy.context.preferences.addons.get(__package__), "preferences", None)
+    delay = prefs.auto_update_delay if prefs else 2.0
+    
+    trigger_update_timer(delay)
 
 def register():
     if auto_update_handler not in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.append(auto_update_handler)
+    if undo_handler not in bpy.app.handlers.undo_post:
+        bpy.app.handlers.undo_post.append(undo_handler)
 
 def unregister():
     if auto_update_handler in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(auto_update_handler)
+    if undo_handler in bpy.app.handlers.undo_post:
+        bpy.app.handlers.undo_post.remove(undo_handler)

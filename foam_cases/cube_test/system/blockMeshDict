@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------*\
 | =========                |                                                 |
 | \      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \    /   O peration     | Script: /home/bchbenjamin/.local/lib/python3.12/site-packages/pytest/__main__.py|
-|   \  /    A nd           | Time: 2026-05-17 12:46:26.595039                |
+|  \    /   O peration     | Script: /home/bchbenjamin/.local/bin/pytest     |
+|   \  /    A nd           | Time: 2026-05-31 16:39:13.689825                |
 |    \/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
 FoamFile

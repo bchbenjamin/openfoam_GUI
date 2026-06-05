@@ -14,6 +14,15 @@ def set_status(context, status_msg):
 
 
 
+def get_case_path(context):
+    scene_props = context.scene.classy_mesh_props
+    case_path = scene_props.case_path
+    if not case_path:
+        prefs = getattr(context.preferences.addons.get(__package__), "preferences", None)
+        if prefs:
+            case_path = prefs.default_case_dir
+    return case_path
+
 class CLASSY_OT_generate_mesh(bpy.types.Operator):
     """Generate blockMeshDict from tagged Blender objects"""
     bl_idname = "classy.generate_mesh"
@@ -23,12 +32,14 @@ class CLASSY_OT_generate_mesh(bpy.types.Operator):
         set_status(context, "Generating blockMeshDict...")
         scene_props = context.scene.classy_mesh_props
         scene_props.structure_warning = ""
-        case_path = scene_props.case_path
+        case_path = get_case_path(context)
 
         if not case_path:
-            self.report({'ERROR'},
-                        "Case directory is not set — open the Classy Blocks "
-                        "panel and set the Case Directory field")
+            def draw_error(self, context):
+                self.layout.label(text="Case directory is not set!", icon='ERROR')
+                self.layout.label(text="Open the Classy Blocks panel and set the Case Directory.")
+            context.window_manager.popup_menu(draw_error, title="No Case Directory", icon='ERROR')
+            self.report({'ERROR'}, "Case directory is not set")
             set_status(context, "Failed: Case directory not set")
             return {'CANCELLED'}
 
@@ -109,23 +120,26 @@ class CLASSY_OT_run_blockmesh(bpy.types.Operator):
     def execute(self, context):
         set_status(context, "Running blockMesh...")
         scene_props = context.scene.classy_mesh_props
-        case_path = scene_props.case_path
+        case_path = get_case_path(context)
         bashrc_path = context.preferences.addons[__package__].preferences.bashrc_path
 
         # Path validation guard
         if not case_path:
-            self.report({'ERROR'},
-                        "Case directory is not set — open the Classy Blocks "
-                        "panel and set the Case Directory field")
+            def draw_error(self, context):
+                self.layout.label(text="Case directory is not set!", icon='ERROR')
+                self.layout.label(text="Open the Classy Blocks panel and set the Case Directory.")
+            context.window_manager.popup_menu(draw_error, title="No Case Directory", icon='ERROR')
+            self.report({'ERROR'}, "Case directory is not set")
             set_status(context, "Failed: Case directory not set")
             return {'CANCELLED'}
 
         case_path = foam_path_utils.resolve_case_path(case_path)
 
         if not os.path.isdir(case_path):
-            self.report({'ERROR'},
-                        f"blockMesh failed: case directory not found at "
-                        f"'{case_path}' — check the Case Directory field")
+            def draw_not_found(self, context):
+                self.layout.label(text=f"Case directory not found at '{case_path}'", icon='ERROR')
+            context.window_manager.popup_menu(draw_not_found, title="Case Not Found", icon='ERROR')
+            self.report({'ERROR'}, f"blockMesh failed: case directory not found at '{case_path}'")
             set_status(context, "Failed: Case directory not found")
             return {'CANCELLED'}
 
@@ -198,32 +212,35 @@ class CLASSY_OT_convert_vtk(bpy.types.Operator):
     def execute(self, context):
         set_status(context, "Running foamToVTK...")
         scene_props = context.scene.classy_mesh_props
-        case_path = scene_props.case_path
+        case_path = get_case_path(context)
         bashrc_path = context.preferences.addons[__package__].preferences.bashrc_path
 
         # Path validation guard
         if not case_path:
-            self.report({'ERROR'},
-                        "Case directory is not set — open the Classy Blocks "
-                        "panel and set the Case Directory field")
+            def draw_error(self, context):
+                self.layout.label(text="Case directory is not set!", icon='ERROR')
+            context.window_manager.popup_menu(draw_error, title="No Case Directory", icon='ERROR')
+            self.report({'ERROR'}, "Case directory is not set")
             set_status(context, "Failed: Case directory not set")
             return {'CANCELLED'}
 
         case_path = foam_path_utils.resolve_case_path(case_path)
 
         if not os.path.isdir(case_path):
-            self.report({'ERROR'},
-                        f"foamToVTK failed: case directory not found at "
-                        f"'{case_path}' — check the Case Directory field")
+            def draw_not_found(self, context):
+                self.layout.label(text=f"Case directory not found at '{case_path}'", icon='ERROR')
+            context.window_manager.popup_menu(draw_not_found, title="Case Not Found", icon='ERROR')
+            self.report({'ERROR'}, f"foamToVTK failed: case directory not found at '{case_path}'")
             set_status(context, "Failed: Case directory not found")
             return {'CANCELLED'}
 
         # Check that blockMesh has been run first
         poly_mesh = os.path.join(case_path, "constant", "polyMesh")
         if not os.path.isdir(poly_mesh):
-            self.report({'ERROR'},
-                        f"polyMesh not found at {poly_mesh} — "
-                        "run blockMesh first (button 2)")
+            def draw_no_mesh(self, context):
+                self.layout.label(text="polyMesh not found! Run blockMesh first.", icon='ERROR')
+            context.window_manager.popup_menu(draw_no_mesh, title="No Mesh Found", icon='ERROR')
+            self.report({'ERROR'}, f"polyMesh not found at {poly_mesh} — run blockMesh first (button 2)")
             set_status(context, "Failed: polyMesh not found")
             return {'CANCELLED'}
 
@@ -267,22 +284,24 @@ class CLASSY_OT_reload_mesh(bpy.types.Operator):
     def execute(self, context):
         set_status(context, "Reloading VTK Mesh...")
         scene_props = context.scene.classy_mesh_props
-        case_path = scene_props.case_path
+        case_path = get_case_path(context)
 
         # Path validation guard
         if not case_path:
-            self.report({'ERROR'},
-                        "Case directory is not set — open the Classy Blocks "
-                        "panel and set the Case Directory field")
+            def draw_error(self, context):
+                self.layout.label(text="Case directory is not set!", icon='ERROR')
+            context.window_manager.popup_menu(draw_error, title="No Case Directory", icon='ERROR')
+            self.report({'ERROR'}, "Case directory is not set")
             set_status(context, "Failed: Case directory not set")
             return {'CANCELLED'}
 
         case_path = foam_path_utils.resolve_case_path(case_path)
 
         if not os.path.isdir(case_path):
-            self.report({'ERROR'},
-                        f"Mesh reload failed: case directory not found at "
-                        f"'{case_path}' — check the Case Directory field")
+            def draw_not_found(self, context):
+                self.layout.label(text=f"Case directory not found at '{case_path}'", icon='ERROR')
+            context.window_manager.popup_menu(draw_not_found, title="Case Not Found", icon='ERROR')
+            self.report({'ERROR'}, f"Mesh reload failed: case directory not found at '{case_path}'")
             set_status(context, "Failed: Case directory not found")
             return {'CANCELLED'}
 
@@ -290,9 +309,10 @@ class CLASSY_OT_reload_mesh(bpy.types.Operator):
             vtk_files = vtk_importer.find_vtk_files(case_path)
 
             if not vtk_files:
-                self.report({'ERROR'},
-                            f"No VTK files found in {case_path}/VTK/ — "
-                            "run foamToVTK first (button 3)")
+                def draw_no_vtk(self, context):
+                    self.layout.label(text="No VTK files found! Run foamToVTK first.", icon='ERROR')
+                context.window_manager.popup_menu(draw_no_vtk, title="No VTK Files", icon='ERROR')
+                self.report({'ERROR'}, f"No VTK files found in {case_path}/VTK/ — run foamToVTK first (button 3)")
                 set_status(context, "Failed: No VTK files")
                 return {'CANCELLED'}
 
@@ -325,9 +345,12 @@ class MESH_OT_export_terrain_stl(bpy.types.Operator):
 
     def execute(self, context):
         scene_props = context.scene.classy_mesh_props
-        case_path = scene_props.case_path
+        case_path = get_case_path(context)
 
         if not case_path:
+            def draw_error(self, context):
+                self.layout.label(text="Case directory is not set!", icon='ERROR')
+            context.window_manager.popup_menu(draw_error, title="No Case Directory", icon='ERROR')
             self.report({'ERROR'}, "Case directory is not set")
             return {'CANCELLED'}
 

@@ -11,7 +11,18 @@ def find_openfoam_env():
     Sources the OpenFOAM bashrc and captures the resulting environment.
     Checks OpenFOAM 13 first, then falls back to older versions.
     """
+    # Detect local symlink in addon directory
+    test_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(test_dir)
+    local_bashrc = ""
+    for name in ["OpenFOAM-13", "openfoam13"]:
+        path = os.path.join(project_root, "addon", name, "etc", "bashrc")
+        if os.path.exists(path):
+            local_bashrc = path
+            break
+
     candidates = [
+        local_bashrc,
         "/opt/openfoam13/etc/bashrc",   # OpenFOAM Foundation v13 (current)
         "/opt/openfoam12/etc/bashrc",
         "/opt/openfoam11/etc/bashrc",

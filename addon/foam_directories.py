@@ -7,34 +7,31 @@ def auto_detect_foam_dirs():
     foam_run = os.environ.get('FOAM_RUN', '')
     foam_tutorials = os.environ.get('FOAM_TUTORIALS', '')
     
-    # Fallback for FOAM_RUN
-    if not foam_run:
-        try:
-            username = getpass.getuser()
-            home_openfoam = Path.home() / "OpenFOAM"
-            if home_openfoam.is_dir():
-                for item in home_openfoam.iterdir():
-                    if item.is_dir() and item.name.startswith(f"{username}-"):
-                        run_dir = item / "run"
-                        if run_dir.is_dir():
-                            foam_run = str(run_dir)
-                            break
-        except Exception:
-            pass
-
-    # Fallback for FOAM_TUTORIALS
-    if not foam_tutorials:
-        for base_path in ["/opt", "/usr/lib/openfoam"]:
-            base = Path(base_path)
-            if base.is_dir():
-                for item in base.iterdir():
-                    if item.is_dir() and "openfoam" in item.name.lower():
-                        tut_dir = item / "tutorials"
-                        if tut_dir.is_dir():
-                            foam_tutorials = str(tut_dir)
-                            break
-                if foam_tutorials:
-                    break
+    if not foam_run or not foam_tutorials:
+        import subprocess
+        username = getpass.getuser()
+        common_bashrcs = [
+            f"/home/{username}/OpenFOAM/OpenFOAM-13/etc/bashrc",
+            f"/home/{username}/OpenFOAM/{username}-13/etc/bashrc",
+            "/opt/openfoam13/etc/bashrc"
+        ]
+        
+        for bashrc in common_bashrcs:
+            if os.path.exists(bashrc):
+                try:
+                    if not foam_run:
+                        res = subprocess.run(["bash", "-c", f"source {bashrc} && echo $FOAM_RUN"], capture_output=True, text=True)
+                        if res.returncode == 0 and res.stdout.strip():
+                            foam_run = res.stdout.strip()
+                    if not foam_tutorials:
+                        res = subprocess.run(["bash", "-c", f"source {bashrc} && echo $FOAM_TUTORIALS"], capture_output=True, text=True)
+                        if res.returncode == 0 and res.stdout.strip():
+                            foam_tutorials = res.stdout.strip()
+                            
+                    if foam_run and foam_tutorials:
+                        break
+                except Exception:
+                    pass
 
     return foam_run, foam_tutorials
 

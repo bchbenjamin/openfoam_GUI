@@ -11,6 +11,24 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
         layout = self.layout
         scene_props = context.scene.classy_mesh_props
 
+        from . import dependencies
+        
+        # --- Python Dependencies Check ---
+        if not dependencies.check_python_deps():
+            box = layout.box()
+            box.label(text="Missing Python Packages", icon='ERROR')
+            box.label(text="classy_blocks and pyvista are required.")
+            box.operator("classy.install_python_deps", icon='IMPORT')
+            return  # Hide the rest of the UI until installed
+
+        # --- OpenFOAM Check ---
+        if not dependencies.get_openfoam_status(context):
+            of_box = layout.box()
+            of_box.label(text="OpenFOAM Not Found", icon='ERROR')
+            of_box.label(text="Meshing requires OpenFOAM to be installed.")
+            of_box.operator("classy.install_openfoam", icon='CONSOLE')
+            layout.separator()
+
         # --- Pipeline Status Header ---
         if scene_props.pipeline_status != "Ready":
             layout.label(text=scene_props.pipeline_status, icon='INFO')
@@ -51,6 +69,12 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                      text=f"Exclude '{obj.name}'", icon=icon)
 
             if not props.exclude_from_mesh:
+                row = header_box.row()
+                row.prop(props, "force_include", text="Force Include (Ignore zero-thickness)")
+                if props.force_include:
+                    warn_row = header_box.row()
+                    warn_row.alert = True
+                    warn_row.label(text="⚠ May cause blockMesh crash if actually 2D", icon='ERROR')
                 # Unapplied transform warning
                 scale = obj.scale
                 if (abs(scale[0] - 1.0) > 1e-4 or
@@ -90,6 +114,35 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                     stl_box.label(text="STL Face Projection (optional — terrain only)")
                     stl_box.prop(props, "stl_projection_face")
                     stl_box.prop(props, "stl_file")
+
+                elif props.block_type == "LOFT":
+                    loft_box = layout.box()
+                    loft_box.label(text="Loft Parameters", icon='MOD_SOLIDIFY')
+                    loft_box.prop(props, "loft_bottom_face_index")
+                    loft_box.prop(props, "loft_top_face_index")
+
+                elif props.block_type == "WEDGE":
+                    wedge_box = layout.box()
+                    wedge_box.label(text="Wedge Parameters (Axisymmetric)", icon='MOD_SCREW')
+                    wedge_box.prop(props, "wedge_face_index")
+                    wedge_box.prop(props, "wedge_angle")
+
+                # --- Shape Chaining controls ---
+                if props.block_type in ("BOX", "EXTRUDE", "REVOLVE", "LOFT", "WEDGE"):
+                    # Chaining only makes sense for cylinder/frustum sources,
+                    # but any block can declare a chain_source
+                    pass  # No chaining UI for non-round block types
+
+                chain_box = layout.box()
+                chain_box.label(text="Shape Chaining (Pipe Networks)", icon='LINKED')
+                chain_box.prop_search(
+                    props, "chain_source",
+                    context.scene, "objects",
+                    text="Chain From"
+                )
+                if props.chain_source:
+                    chain_box.prop(props, "chain_length")
+                    chain_box.prop(props, "chain_radius_2")
 
                 # --- Grading controls ---
                 layout.separator()

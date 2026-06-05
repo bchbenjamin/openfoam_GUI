@@ -9,6 +9,7 @@ TWO-LAYER TOPOLOGICAL AUTO-DETECTION PIPELINE:
       Ratio ≈ 1.00  → Box candidate
       Ratio ≈ 0.785 → Cylinder candidate (π/4)
       Ratio ≈ 0.524 → Sphere candidate (π/6)
+      Ratio ≈ 0.262 → Cone/Frustum candidate (π/12)
       Otherwise      → Unsupported
 
   Layer 2 — PyVista Validation (accurate):
@@ -16,13 +17,12 @@ TWO-LAYER TOPOLOGICAL AUTO-DETECTION PIPELINE:
       - is_manifold (watertight)
       - Unique normals count (boxes have ≤ 6 orthogonal directions)
       - Gaussian curvature (cylinders have K≈0 on side walls)
-
-  This replaces the broken "universal blind STL projection" that caused
-  OpenFOAM to crash with "Cannot find triSurface file".
+      - Cap radius comparison (frustum: two caps with different radii)
 
 SUPPORTED BLOCK TYPES (auto-detected):
   - box:         cb.Box(p_min, p_max)
   - cylinder:    cb.Cylinder(axis_pt1, axis_pt2, radius_point)
+  - frustum:     cb.Frustum(axis_pt1, axis_pt2, radius_pt1, radius_2)
   - sphere:      two cb.Hemisphere shapes
   - disk:        thin structured disk for planar round profiles
   - unsupported: skipped with warning (future: snappyHexMesh pipeline)
@@ -30,6 +30,8 @@ SUPPORTED BLOCK TYPES (auto-detected):
 MANUAL OVERRIDES (via panel):
   - EXTRUDE: cb.Extrude(cb.Face(4pts), vector)
   - REVOLVE: cb.Revolve(cb.Face(4pts), angle, axis, origin)
+  - LOFT:    cb.Loft(cb.Face(bottom), cb.Face(top))
+  - WEDGE:   cb.Wedge(cb.Face(4pts), angle)
 
 COORDINATE PRESERVATION:
   All coordinates are in absolute world space via obj.matrix_world.
@@ -80,6 +82,10 @@ def extract_geometry(context):
                 spec = _extract_extrude(obj, props)
             elif block_type == "REVOLVE":
                 spec = _extract_revolve(obj, props)
+            elif block_type == "LOFT":
+                spec = _extract_loft(obj, props)
+            elif block_type == "WEDGE":
+                spec = _extract_wedge(obj, props)
             else:
                 # BOX is the default — but we now auto-detect the actual shape
                 spec = _extract_auto_detected(obj, props)
@@ -121,23 +127,43 @@ def _extract_auto_detected(obj, props):
     # catch these and flag as unsupported with an actionable message.
 
     # --- Layer 1: Volume Ratio Heuristic ---
-    p_min, p_max = _get_world_bounding_box(obj)
-    bb_dims = [p_max[i] - p_min[i] for i in range(3)]
+    # Compute bounding box volume using local bounds and object scale
+    # to avoid AABB rotation bloat (which causes rotated boxes to fail detection)
+    local_corners = [c for c in obj.bound_box]
+    local_xs = [c[0] for c in local_corners]
+    local_ys = [c[1] for c in local_corners]
+    local_zs = [c[2] for c in local_corners]
+    
+    local_p_min = [min(local_xs), min(local_ys), min(local_zs)]
+    local_p_max = [max(local_xs), max(local_ys), max(local_zs)]
+    
+    local_dims = [local_p_max[i] - local_p_min[i] for i in range(3)]
+    scale = obj.matrix_world.to_scale()
+    bb_dims = [local_dims[0] * scale.x, local_dims[1] * scale.y, local_dims[2] * scale.z]
 
     # Guard against zero-dimension objects (planes, lines)
     if any(d < 1e-8 for d in bb_dims):
         print(f"[classy_blocks]   '{obj.name}': zero-thickness dimension "
-              f"({bb_dims}) — treating as unsupported")
-        return _make_unsupported_spec(obj, props, "zero-thickness")
+              f"({bb_dims})")
+        if props and getattr(props, "force_include", False):
+            print(f"[classy_blocks]   WARNING: Force-including zero-thickness object '{obj.name}' as BOX.")
+            return _extract_box(obj, props)
+        else:
+            print(f"[classy_blocks]   — treating as unsupported")
+            return _make_unsupported_spec(obj, props, "zero-thickness")
 
     bb_volume = bb_dims[0] * bb_dims[1] * bb_dims[2]
 
     # Get actual mesh volume
     mesh_volume = _compute_mesh_volume(obj)
     if mesh_volume is None or mesh_volume < 1e-12:
-        print(f"[classy_blocks]   '{obj.name}': cannot compute mesh volume "
-              f"— treating as unsupported")
-        return _make_unsupported_spec(obj, props, "no-volume")
+        print(f"[classy_blocks]   '{obj.name}': cannot compute mesh volume")
+        if props and getattr(props, "force_include", False):
+            print(f"[classy_blocks]   WARNING: Force-including zero-volume object '{obj.name}' as BOX.")
+            return _extract_box(obj, props)
+        else:
+            print(f"[classy_blocks]   — treating as unsupported")
+            return _make_unsupported_spec(obj, props, "no-volume")
 
     ratio = mesh_volume / bb_volume
     print(f"[classy_blocks]   '{obj.name}': volume ratio = {ratio:.4f} "
@@ -147,6 +173,7 @@ def _extract_auto_detected(obj, props):
     BOX_RATIO = 1.0
     CYL_RATIO = math.pi / 4      # ≈ 0.7854
     SPH_RATIO = math.pi / 6      # ≈ 0.5236
+    CONE_RATIO = math.pi / 12    # ≈ 0.2618 (pointy cone = 1/3 of cylinder)
     TOLERANCE = 0.12              # ±12% tolerance for heuristic match
 
     candidate = "unsupported"
@@ -156,6 +183,12 @@ def _extract_auto_detected(obj, props):
         candidate = "cylinder"
     elif abs(ratio - SPH_RATIO) < TOLERANCE:
         candidate = "sphere"
+    elif abs(ratio - CONE_RATIO) < TOLERANCE:
+        candidate = "frustum"
+    elif CONE_RATIO + TOLERANCE < ratio < SPH_RATIO - TOLERANCE:
+        # Frustums with a non-trivial top radius land between cone and sphere
+        # ranges. Layer 2 (PyVista) will confirm via cap analysis.
+        candidate = "frustum"
 
     print(f"[classy_blocks]   Layer 1 candidate: '{candidate}'")
 
@@ -167,10 +200,17 @@ def _extract_auto_detected(obj, props):
 
     # --- Build typed spec ---
     if validated == "box":
-        return _build_box_spec(obj, props, p_min, p_max)
+        transform_matrix = [list(row) for row in obj.matrix_world]
+        return _build_box_spec(obj, props, local_p_min, local_p_max, transform_matrix)
     elif validated == "cylinder":
+        # Get p_min, p_max for fallback methods that might need world space
+        p_min, p_max = _get_world_bounding_box(obj)
         return _build_cylinder_spec(obj, props, p_min, p_max, bb_dims)
+    elif validated == "frustum":
+        p_min, p_max = _get_world_bounding_box(obj)
+        return _build_frustum_spec(obj, props, p_min, p_max, bb_dims)
     elif validated == "sphere":
+        p_min, p_max = _get_world_bounding_box(obj)
         return _build_sphere_spec(obj, props, p_min, p_max)
     else:
         return _make_unsupported_spec(obj, props, validated)
@@ -304,7 +344,10 @@ def _validate_with_pyvista(obj, candidate):
         os.unlink(tmp_path)
 
         # Check manifold (watertight)
-        surface = pv_mesh.extract_surface()
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            surface = pv_mesh.extract_surface()
         is_manifold = surface.is_manifold
         if not is_manifold:
             print(f"[classy_blocks]   PyVista: NOT manifold — downgrading")
@@ -314,6 +357,8 @@ def _validate_with_pyvista(obj, candidate):
             return _validate_box_pyvista(surface)
         elif candidate == "cylinder":
             return _validate_cylinder_pyvista(surface)
+        elif candidate == "frustum":
+            return _validate_frustum_pyvista(surface)
         elif candidate == "sphere":
             return _validate_sphere_pyvista(surface)
         else:
@@ -410,16 +455,66 @@ def _validate_sphere_pyvista(surface):
     return "unsupported"
 
 
+def _validate_frustum_pyvista(surface):
+    """
+    Validate a frustum/cone candidate: check that the mesh has two circular
+    end-caps with different radii, connected by sloped sides.
+
+    A frustum (truncated cone) has:
+      - Two cap faces with normals along the primary axis
+      - The caps have different radii (unlike a cylinder where they match)
+      - Side walls with normals perpendicular to the axis
+    """
+    normals = np.array(surface.face_normals)
+    if len(normals) == 0:
+        return "unsupported"
+
+    # Reuse the same axis-detection logic as cylinders:
+    # Find which axis has clear cap faces
+    for axis_idx in range(3):
+        axis_normals = np.abs(normals[:, axis_idx])
+        cap_mask = axis_normals > 0.9
+        cap_count = np.sum(cap_mask)
+
+        if cap_count >= 2:
+            side_mask = ~cap_mask
+            side_count = np.sum(side_mask)
+            if side_count > 0:
+                # Side normals on a cone have a non-zero component along the
+                # axis (unlike a cylinder where it's ≈0). For a frustum/cone,
+                # the side normal axis component will be moderate (0.05 to 0.8)
+                side_axis_component = np.abs(normals[side_mask, axis_idx])
+                mean_axis = float(np.mean(side_axis_component))
+
+                # Frustum: side normals have some axis component (the slope)
+                # Cylinder: side normals have near-zero axis component
+                # If the mean is between 0.05 and 0.85, it's a frustum
+                if 0.05 < mean_axis < 0.85:
+                    print(f"[classy_blocks]   PyVista: {cap_count} cap faces, "
+                          f"{side_count} side faces with slope={mean_axis:.3f} "
+                          f"along axis {axis_idx} — confirmed FRUSTUM")
+                    return "frustum"
+                elif mean_axis < 0.15:
+                    # This is actually a cylinder, not a frustum
+                    print(f"[classy_blocks]   PyVista: reclassifying as CYLINDER "
+                          f"(slope too low: {mean_axis:.3f})")
+                    return "cylinder"
+
+    print(f"[classy_blocks]   PyVista: no clear frustum axis found")
+    return "unsupported"
+
+
 # ─────────────────────── SPEC BUILDERS ───────────────────────
 
 
-def _build_box_spec(obj, props, p_min, p_max):
+def _build_box_spec(obj, props, p_min, p_max, transform_matrix=None):
     """Build a spec dict for a confirmed box shape."""
     spec = {
         "type": "box",
         "name": obj.name,
         "p_min": p_min,
         "p_max": p_max,
+        "transform_matrix": transform_matrix,
         "cells": _read_cells(props),
         "patch_name": _read_patch_name(props),
         **_read_grading(props),
@@ -503,12 +598,22 @@ def _build_sphere_spec(obj, props, p_min, p_max):
     """
     from mathutils import Vector
 
-    center = [
-        (p_min[0] + p_max[0]) / 2.0,
-        (p_min[1] + p_max[1]) / 2.0,
-        (p_min[2] + p_max[2]) / 2.0,
-    ]
-    radius = sum((p_max[i] - p_min[i]) / 2.0 for i in range(3)) / 3.0
+    center = list(obj.matrix_world @ Vector((0, 0, 0)))
+    
+    local_corners = [c for c in obj.bound_box]
+    local_xs = [c[0] for c in local_corners]
+    local_ys = [c[1] for c in local_corners]
+    local_zs = [c[2] for c in local_corners]
+    local_radius = sum([
+        max(local_xs) - min(local_xs),
+        max(local_ys) - min(local_ys),
+        max(local_zs) - min(local_zs)
+    ]) / 6.0
+    
+    scale = obj.matrix_world.to_scale()
+    avg_scale = (scale.x + scale.y + scale.z) / 3.0
+    radius = local_radius * avg_scale
+    
     radius_point = [center[0] + radius, center[1], center[2]]
 
     # Compute split axis: transform local Z by the object's world rotation
@@ -528,20 +633,143 @@ def _build_sphere_spec(obj, props, p_min, p_max):
     }
 
 
+def _build_frustum_spec(obj, props, p_min, p_max, bb_dims):
+    """
+    Build a spec dict for a confirmed frustum (truncated cone) shape.
+
+    cb.Frustum(axis_point_1, axis_point_2, radius_point_1, radius_2):
+      - axis_point_1, axis_point_2: endpoints of the frustum axis
+      - radius_point_1: a point ON the surface at the axis_pt1 end
+      - radius_2: scalar radius at the axis_pt2 end (NOT a point!)
+
+    We detect the axis as the longest bounding box dimension, then
+    measure the radius at each end by grouping vertices by their
+    projection onto the axis.
+    """
+    from mathutils import Vector
+
+    local_vertices, face_normals, face_areas = _get_local_mesh_geometry(obj)
+    if len(local_vertices) == 0:
+        local_vertices = np.array([list(corner) for corner in obj.bound_box], dtype=float)
+        face_normals = None
+        face_areas = None
+
+    points = np.asarray(local_vertices, dtype=float)
+
+    # Find the axis — same logic as cylinder: longest dimension or cap normals
+    axis_dir = _infer_axis_from_opposite_normals(face_normals, face_areas)
+    if axis_dir is None:
+        dims = np.max(points, axis=0) - np.min(points, axis=0)
+        axis_dir = np.zeros(3, dtype=float)
+        axis_dir[int(np.argmax(dims))] = 1.0
+
+    axis_dir = np.asarray(_normalize_vector(axis_dir), dtype=float)
+    center = np.mean(points, axis=0)
+    centered = points - center
+    projections = centered @ axis_dir
+
+    pt1_local = center + axis_dir * float(np.min(projections))
+    pt2_local = center + axis_dir * float(np.max(projections))
+    axis_length = float(np.max(projections) - np.min(projections))
+
+    # Split vertices into bottom half and top half to measure radii
+    mid_proj = float(np.median(projections))
+    bottom_mask = projections < mid_proj
+    top_mask = projections >= mid_proj
+
+    radial_vectors = centered - np.outer(projections, axis_dir)
+    radial_lengths = np.linalg.norm(radial_vectors, axis=1)
+
+    radius_1 = float(np.max(radial_lengths[bottom_mask])) if np.any(bottom_mask) else 0.0
+    radius_2 = float(np.max(radial_lengths[top_mask])) if np.any(top_mask) else 0.0
+
+    # Ensure radius_1 is the larger one (start = wide end)
+    if radius_2 > radius_1:
+        pt1_local, pt2_local = pt2_local, pt1_local
+        radius_1, radius_2 = radius_2, radius_1
+
+    if radius_1 < 1e-8:
+        raise ValueError("Frustum inference produced zero radius")
+
+    # Compute radius_point_1 (a point on the surface at pt1 end)
+    bottom_radials = radial_vectors[bottom_mask] if radius_2 <= radius_1 else radial_vectors[top_mask]
+    bottom_lengths = radial_lengths[bottom_mask] if radius_2 <= radius_1 else radial_lengths[top_mask]
+    if len(bottom_lengths) > 0:
+        max_idx = int(np.argmax(bottom_lengths))
+        radius_dir = bottom_radials[max_idx] / max(bottom_lengths[max_idx], 1e-12)
+    else:
+        radius_dir = np.array([1.0, 0.0, 0.0])
+
+    rad_pt_local = pt1_local + radius_dir * radius_1
+
+    # Transform to absolute world space
+    mat = obj.matrix_world
+    axis_pt1 = list(mat @ Vector(pt1_local.tolist()))
+    axis_pt2 = list(mat @ Vector(pt2_local.tolist()))
+    radius_point = list(mat @ Vector(rad_pt_local.tolist()))
+
+    # World-space radius_2: scale by the uniform scale factor
+    # (non-uniform scale is warned about but still handled)
+    scale_factors = [obj.matrix_world.to_scale()[i] for i in range(3)]
+    avg_scale = sum(scale_factors) / 3.0
+    world_radius_2 = radius_2 * avg_scale
+
+    print(f"[classy_blocks]   Frustum: r1={radius_1:.4f}, r2={radius_2:.4f}, "
+          f"length={axis_length:.4f}")
+
+    return {
+        "type": "frustum",
+        "name": obj.name,
+        "axis_pt1": axis_pt1,
+        "axis_pt2": axis_pt2,
+        "radius_point_1": radius_point,
+        "radius_1": float(np.linalg.norm(
+            np.asarray(radius_point) - np.asarray(axis_pt1)
+        )),
+        "radius_2": world_radius_2,
+        "cells": _read_cells(props),
+        "patch_name": _read_patch_name(props),
+        **_read_grading(props),
+        **_read_chain_params(props),
+    }
+
+
 def _make_unsupported_spec(obj, props, reason):
     """
-    Handle unsupported shapes: print a loud warning and return None.
+    Handle unsupported shapes: print a loud warning and return a skip spec.
 
-    Future: these objects will be routed to the snappyHexMesh pipeline.
+    Provides user-friendly messages explaining WHY and WHAT TO DO.
     """
-    warning = (f"{obj.name}: unsupported mesh ({reason}) — it will stay in the "
-               "Blender scene but be skipped during blockMesh generation.")
+    # Map technical reasons to user-friendly messages
+    _friendly_reasons = {
+        "zero-thickness": (
+            "This shape has no volume (it's flat/2D). "
+            "classy_blocks only supports 3D shapes. "
+            "Extrude this shape to give it depth."
+        ),
+        "no-volume": (
+            "Could not compute mesh volume. "
+            "Check that the mesh is closed (watertight) "
+            "and has no overlapping faces."
+        ),
+        "planar-non-round": (
+            "Flat non-circular shape detected. "
+            "classy_blocks cannot mesh arbitrary 2D profiles — "
+            "extrude this shape into a 3D volume first."
+        ),
+        "planar-degenerate": (
+            "Degenerate planar shape (zero radius). "
+            "This shape is too small to mesh."
+        ),
+    }
+    friendly = _friendly_reasons.get(reason, reason)
+
+    warning = (f"{obj.name}: {friendly} — skipped during blockMesh generation.")
     print("")
     print("  ╔══════════════════════════════════════════════════════╗")
     print(f"  ║  UNSUPPORTED SHAPE: '{obj.name}'")
-    print(f"  ║  Reason: {reason}")
+    print(f"  ║  {friendly}")
     print("  ║  This object will be SKIPPED from the mesh.")
-    print("  ║  Future: snappyHexMesh pipeline for complex shapes.")
     print("  ╚══════════════════════════════════════════════════════╝")
     print("")
     return {
@@ -560,6 +788,7 @@ def _extract_extrude(obj, props):
     """
     EXTRUDE: extract a quad face from the object and an extrusion vector.
     """
+    from mathutils import Vector
     face_index = getattr(props, "extrude_face_index", 0) if props else 0
     face_verts = _extract_face_vertices_world(obj, face_index)
 
@@ -572,9 +801,9 @@ def _extract_extrude(obj, props):
     extrude_axis_name = getattr(props, "extrude_axis", "Z") if props else "Z"
     distance = getattr(props, "extrude_distance", 1.0) if props else 1.0
 
-    axis_map = {"X": [1, 0, 0], "Y": [0, 1, 0], "Z": [0, 0, 1]}
-    axis_vec = axis_map.get(extrude_axis_name, [0, 0, 1])
-    extrude_vector = [v * distance for v in axis_vec]
+    axis_map = {"X": Vector((1, 0, 0)), "Y": Vector((0, 1, 0)), "Z": Vector((0, 0, 1))}
+    local_vec = axis_map.get(extrude_axis_name, Vector((0, 0, 1))) * distance
+    extrude_vector = list(obj.matrix_world.to_3x3() @ local_vec)
 
     return {
         "type": "extrude",
@@ -591,6 +820,7 @@ def _extract_revolve(obj, props):
     """
     REVOLVE: extract a quad face and revolve parameters.
     """
+    from mathutils import Vector
     face_index = getattr(props, "revolve_face_index", 0) if props else 0
     face_verts = _extract_face_vertices_world(obj, face_index)
 
@@ -604,16 +834,97 @@ def _extract_revolve(obj, props):
     axis_name = getattr(props, "revolve_axis", "Z") if props else "Z"
     origin = list(getattr(props, "revolve_origin", (0, 0, 0))) if props else [0, 0, 0]
 
-    axis_map = {"X": [1, 0, 0], "Y": [0, 1, 0], "Z": [0, 0, 1]}
-    axis_vec = axis_map[axis_name]
+    axis_map = {"X": Vector((1, 0, 0)), "Y": Vector((0, 1, 0)), "Z": Vector((0, 0, 1))}
+    local_axis = axis_map[axis_name]
+    world_axis = obj.matrix_world.to_3x3() @ local_axis
+    if world_axis.length > 0:
+        world_axis.normalize()
+    
+    local_origin = Vector(origin)
+    world_origin = obj.matrix_world @ local_origin
 
     return {
         "type": "revolve",
         "name": obj.name,
         "face": face_verts,
         "angle_deg": angle_deg,
+        "axis": list(world_axis),
+        "origin": list(world_origin),
+        "cells": _read_cells(props),
+        "patch_name": _read_patch_name(props),
+        **_read_grading(props),
+    }
+
+
+def _extract_loft(obj, props):
+    """
+    LOFT: connect two quad faces (bottom → top) to create a transition block.
+
+    The user selects bottom_face_index and top_face_index from the object's
+    Edit Mode polygon list. Both must be quads.
+    """
+    bottom_idx = getattr(props, "loft_bottom_face_index", 0) if props else 0
+    top_idx = getattr(props, "loft_top_face_index", 1) if props else 1
+
+    bottom_verts = _extract_face_vertices_world(obj, bottom_idx)
+    top_verts = _extract_face_vertices_world(obj, top_idx)
+
+    if len(bottom_verts) != 4:
+        raise ValueError(
+            f"Loft bottom face {bottom_idx} on '{obj.name}' has "
+            f"{len(bottom_verts)} vertices — must be exactly 4 (a quad)."
+        )
+    if len(top_verts) != 4:
+        raise ValueError(
+            f"Loft top face {top_idx} on '{obj.name}' has "
+            f"{len(top_verts)} vertices — must be exactly 4 (a quad)."
+        )
+
+    return {
+        "type": "loft",
+        "name": obj.name,
+        "bottom_face": bottom_verts,
+        "top_face": top_verts,
+        "cells": _read_cells(props),
+        "patch_name": _read_patch_name(props),
+        **_read_grading(props),
+    }
+
+
+def _extract_wedge(obj, props):
+    """
+    WEDGE: create an axisymmetric 2D case by revolving a quad face ±angle/2
+    around the x-axis.
+
+    Used for axisymmetric CFD problems (e.g. pipe flow, nozzles).
+    Typical angle is 2–5 degrees.
+    """
+    from mathutils import Vector
+    face_index = getattr(props, "wedge_face_index", 0) if props else 0
+    face_verts = _extract_face_vertices_world(obj, face_index)
+
+    if len(face_verts) != 4:
+        raise ValueError(
+            f"Wedge face {face_index} on '{obj.name}' has "
+            f"{len(face_verts)} vertices — must be exactly 4 (a quad)."
+        )
+
+    angle_deg = getattr(props, "wedge_angle", 2.0) if props else 2.0
+    
+    axis_vec = obj.matrix_world.to_3x3() @ Vector((1, 0, 0))
+    if axis_vec.length > 0:
+        axis_vec.normalize()
+    axis_vec = list(axis_vec)
+    
+    origin_world = list(obj.matrix_world @ Vector((0, 0, 0)))
+
+    return {
+        "type": "wedge",
+        "name": obj.name,
+        "face": face_verts,
+        "angle_deg": angle_deg,
         "axis": axis_vec,
-        "origin": origin,
+        "origin": origin_world,
         "cells": _read_cells(props),
         "patch_name": _read_patch_name(props),
         **_read_grading(props),
@@ -833,6 +1144,18 @@ def _read_grading(props):
         "grading": grading,
         "start_size": float(getattr(props, "start_size", 1e-4) if props else 1e-4),
         "end_size": float(getattr(props, "end_size", 1e-4) if props else 1e-4),
+    }
+
+
+def _read_chain_params(props):
+    """Read shape chaining parameters from object properties."""
+    chain_source = getattr(props, "chain_source", "") if props else ""
+    if not chain_source:
+        return {}
+    return {
+        "chain_source": chain_source,
+        "chain_length": float(getattr(props, "chain_length", 1.0) if props else 1.0),
+        "chain_radius_2": float(getattr(props, "chain_radius_2", 0.0) if props else 0.0),
     }
 
 

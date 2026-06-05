@@ -4,6 +4,7 @@ from . import properties, ui, operators, geometry_extractor, vtk_importer, prefe
 from . import foam_directories
 from . import tutorial_manager
 from . import auto_update
+from . import dependencies
 
 classes = [
     preferences.ClassyBlocksPreferences,
@@ -23,6 +24,8 @@ classes = [
     tutorial_manager.CLASSY_OT_copy_tutorial,
     tutorial_manager.CLASSY_OT_confirm_case_path,
     tutorial_manager.CLASSY_PT_tutorial_manager,
+    dependencies.CLASSY_OT_install_python_deps,
+    dependencies.CLASSY_OT_install_openfoam,
 ]
 
 def register():
@@ -33,8 +36,10 @@ def register():
     bpy.types.Scene.foam_dirs = bpy.props.PointerProperty(type=foam_directories.FoamDirectoryProperties)
     bpy.types.Scene.tutorial_manager = bpy.props.PointerProperty(type=tutorial_manager.TutorialManagerProperties)
     auto_update.register()
+    dependencies.register_startup_checks()
 
 def unregister():
+    dependencies.unregister_startup_checks()
     auto_update.unregister()
     del bpy.types.Scene.foam_dirs
     del bpy.types.Scene.tutorial_manager

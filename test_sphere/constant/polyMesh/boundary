@@ -21,7 +21,7 @@ FoamFile
         type            empty;
         inGroups        List<word> 1(empty);
         nFaces          600;
-        startFace       2700;
+        startFace       11700;
     }
 )
 
