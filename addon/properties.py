@@ -63,7 +63,7 @@ class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
             ("right", "Right", ""),
         ],
     )
-    stl_file: bpy.props.StringProperty(name="STL File", subtype="FILE_PATH")
+    stl_file: bpy.props.StringProperty(name="STL File", subtype="FILE_PATH", default="")
 
     # --- EXTRUDE parameters ---
     extrude_face_index: bpy.props.IntProperty(

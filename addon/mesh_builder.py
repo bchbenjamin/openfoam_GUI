@@ -133,8 +133,15 @@ def _build_box(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     print(f"[classy_blocks]   Building Box: p_min={spec['p_min']}, p_max={spec['p_max']}")
     box = cb.Box(spec["p_min"], spec["p_max"])
     
-    if spec.get("transform_matrix"):
-        box.transform(spec["transform_matrix"])
+    # Apply decomposed transforms using native API
+    rot_angle = spec.get("rotation_angle", 0.0)
+    rot_axis = spec.get("rotation_axis")
+    if rot_angle and rot_axis and abs(rot_angle) > 1e-6:
+        box.rotate(rot_angle, rot_axis, origin=[0, 0, 0])
+        
+    translation = spec.get("translation")
+    if translation:
+        box.translate(translation)
         
     _apply_chops(box, spec)
 

@@ -121,7 +121,10 @@ class CLASSY_OT_run_blockmesh(bpy.types.Operator):
         set_status(context, "Running blockMesh...")
         scene_props = context.scene.classy_mesh_props
         case_path = get_case_path(context)
-        bashrc_path = context.preferences.addons[__package__].preferences.bashrc_path
+        try:
+            bashrc_path = context.preferences.addons[__package__].preferences.bashrc_path
+        except (KeyError, TypeError):
+            bashrc_path = ""
 
         # Path validation guard
         if not case_path:
@@ -213,7 +216,10 @@ class CLASSY_OT_convert_vtk(bpy.types.Operator):
         set_status(context, "Running foamToVTK...")
         scene_props = context.scene.classy_mesh_props
         case_path = get_case_path(context)
-        bashrc_path = context.preferences.addons[__package__].preferences.bashrc_path
+        try:
+            bashrc_path = context.preferences.addons[__package__].preferences.bashrc_path
+        except (KeyError, TypeError):
+            bashrc_path = ""
 
         # Path validation guard
         if not case_path:
@@ -355,13 +361,19 @@ class MESH_OT_export_terrain_stl(bpy.types.Operator):
             return {'CANCELLED'}
 
         case_path = foam_path_utils.resolve_case_path(case_path)
-        stl_dir = os.path.join(case_path, "constant", "triSurface")
-        os.makedirs(stl_dir, exist_ok=True)
-        stl_path = os.path.join(stl_dir, "terrain.stl")
+        stl_dir1 = os.path.join(case_path, "constant", "triSurface")
+        stl_dir2 = os.path.join(case_path, "constant", "geometry")
+        os.makedirs(stl_dir1, exist_ok=True)
+        os.makedirs(stl_dir2, exist_ok=True)
+        
+        stl_path1 = os.path.join(stl_dir1, "terrain.stl")
+        stl_path2 = os.path.join(stl_dir2, "terrain.stl")
 
         try:
-            bpy.ops.wm.stl_export(filepath=stl_path, export_selected_objects=True)
-            self.report({'INFO'}, f"Terrain STL exported to {stl_path}")
+            bpy.ops.wm.stl_export(filepath=stl_path1, export_selected_objects=True)
+            import shutil
+            shutil.copy2(stl_path1, stl_path2)
+            self.report({'INFO'}, f"Terrain STL exported to {stl_path1} & {stl_path2}")
             set_status(context, f"Exported terrain STL")
             return {'FINISHED'}
         except Exception as e:

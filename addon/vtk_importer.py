@@ -97,8 +97,14 @@ def load_vtk_as_blender_mesh(vtk_path, mesh_name="BlockMesh_Result"):
     print(f"[vtk_importer]   Volume: {pv_mesh.n_points} points, {pv_mesh.n_cells} cells")
     print(f"[vtk_importer]   Surface: {surface.n_points} points, {surface.n_cells} faces")
 
-    # Split into disconnected bodies
-    bodies = surface.split_bodies()
+    # Split into disconnected bodies (may fail on some VTK grid types)
+    try:
+        bodies = surface.split_bodies()
+        if len(bodies) == 0:
+            bodies = [surface]
+    except (AttributeError, RuntimeError, Exception) as e:
+        print(f"[vtk_importer]   split_bodies() failed ({e}), treating as single body")
+        bodies = [surface]
     
     # Remove old objects
     _remove_existing_objects_with_prefix(mesh_name)
@@ -109,7 +115,11 @@ def load_vtk_as_blender_mesh(vtk_path, mesh_name="BlockMesh_Result"):
             continue
             
         vertices = [tuple(v) for v in body.points.tolist()]
-        faces = _parse_pyvista_faces(body.faces)
+        # UnstructuredGrid has cells, PolyData has faces
+        try:
+            faces = _parse_pyvista_faces(body.faces)
+        except AttributeError:
+            faces = _parse_pyvista_faces(body.cells)
         
         name = f"{mesh_name}_{i+1}" if len(bodies) > 1 else mesh_name
         
@@ -180,6 +190,8 @@ def _remove_existing_objects_with_prefix(prefix):
     for obj in objs_to_remove:
         mesh_data = obj.data if obj.type == 'MESH' else None
 
+        obj_name = obj.name
+        
         # Unlink from all collections
         for collection in obj.users_collection:
             collection.objects.unlink(obj)
@@ -191,4 +203,4 @@ def _remove_existing_objects_with_prefix(prefix):
         if mesh_data and mesh_data.users == 0:
             bpy.data.meshes.remove(mesh_data)
 
-        print(f"[vtk_importer]   Removed existing object: '{obj.name}'")
+        print(f"[vtk_importer]   Removed existing object: '{obj_name}'")

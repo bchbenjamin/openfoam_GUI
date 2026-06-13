@@ -147,7 +147,8 @@ def _extract_auto_detected(obj, props):
               f"({bb_dims})")
         if props and getattr(props, "force_include", False):
             print(f"[classy_blocks]   WARNING: Force-including zero-thickness object '{obj.name}' as BOX.")
-            return _extract_box(obj, props)
+            decomposed = _decompose_matrix_world(obj)
+            return _build_box_spec(obj, props, local_p_min, local_p_max, decomposed)
         else:
             print(f"[classy_blocks]   — treating as unsupported")
             return _make_unsupported_spec(obj, props, "zero-thickness")
@@ -160,7 +161,8 @@ def _extract_auto_detected(obj, props):
         print(f"[classy_blocks]   '{obj.name}': cannot compute mesh volume")
         if props and getattr(props, "force_include", False):
             print(f"[classy_blocks]   WARNING: Force-including zero-volume object '{obj.name}' as BOX.")
-            return _extract_box(obj, props)
+            decomposed = _decompose_matrix_world(obj)
+            return _build_box_spec(obj, props, local_p_min, local_p_max, decomposed)
         else:
             print(f"[classy_blocks]   — treating as unsupported")
             return _make_unsupported_spec(obj, props, "no-volume")
@@ -200,8 +202,8 @@ def _extract_auto_detected(obj, props):
 
     # --- Build typed spec ---
     if validated == "box":
-        transform_matrix = [list(row) for row in obj.matrix_world]
-        return _build_box_spec(obj, props, local_p_min, local_p_max, transform_matrix)
+        decomposed = _decompose_matrix_world(obj)
+        return _build_box_spec(obj, props, local_p_min, local_p_max, decomposed)
     elif validated == "cylinder":
         # Get p_min, p_max for fallback methods that might need world space
         p_min, p_max = _get_world_bounding_box(obj)
@@ -504,27 +506,75 @@ def _validate_frustum_pyvista(surface):
     return "unsupported"
 
 
+# ─────────────────────── TRANSFORM DECOMPOSITION ─────────────────────
+
+
+def _decompose_matrix_world(obj):
+    """
+    Decomposes a Blender object's matrix_world into components that
+    can be used with classy_blocks' native transform API.
+
+    Strategy:
+      - Non-uniform scale is baked into p_min/p_max directly (not passed
+        to cb.Box.scale(), which only supports uniform scaling).
+      - Rotation is extracted as axis + angle for cb.Box.rotate().
+      - Translation is the world-space location for cb.Box.translate().
+
+    Returns dict with: scale (3-vector), rotation_axis (3-vector),
+    rotation_angle (float, radians), translation (3-vector).
+    """
+    from mathutils import Vector
+
+    loc, rot_quat, scale = obj.matrix_world.decompose()
+
+    # Rotation: quaternion → axis/angle
+    rot_axis, rot_angle = rot_quat.to_axis_angle()
+
+    return {
+        "scale": [scale.x, scale.y, scale.z],
+        "rotation_axis": list(rot_axis),
+        "rotation_angle": rot_angle,
+        "translation": list(loc),
+    }
+
+
 # ─────────────────────── SPEC BUILDERS ───────────────────────
 
 
-def _build_box_spec(obj, props, p_min, p_max, transform_matrix=None):
-    """Build a spec dict for a confirmed box shape."""
+def _build_box_spec(obj, props, p_min, p_max, decomposed_transform=None):
+    """
+    Build a spec dict for a confirmed box shape.
+
+    p_min/p_max are in LOCAL coordinates. The decomposed_transform dict
+    contains scale, rotation, and translation extracted from matrix_world.
+    Non-uniform scale is baked into p_min/p_max here so that cb.Box
+    receives correctly-sized local coordinates.
+    """
+    # Bake non-uniform scale into the local p_min/p_max
+    if decomposed_transform:
+        sx, sy, sz = decomposed_transform["scale"]
+        p_min = [p_min[0] * sx, p_min[1] * sy, p_min[2] * sz]
+        p_max = [p_max[0] * sx, p_max[1] * sy, p_max[2] * sz]
+
     spec = {
         "type": "box",
         "name": obj.name,
         "p_min": p_min,
         "p_max": p_max,
-        "transform_matrix": transform_matrix,
         "cells": _read_cells(props),
         "patch_name": _read_patch_name(props),
         **_read_grading(props),
     }
 
+    # Pass decomposed rotation + translation for mesh_builder
+    if decomposed_transform:
+        spec["rotation_axis"] = decomposed_transform["rotation_axis"]
+        spec["rotation_angle"] = decomposed_transform["rotation_angle"]
+        spec["translation"] = decomposed_transform["translation"]
+
     # Optional user-specified terrain STL projection
     if props:
         stl_file = getattr(props, "stl_file", "") or ""
-        # Blender's FILE_PATH subtype may return "//" (blend-relative prefix)
-        # even when the user never set a file. Strip it and check for a real name.
         stl_basename = os.path.basename(stl_file.strip())
         if stl_basename:
             face_name = getattr(props, "stl_projection_face", "top")
