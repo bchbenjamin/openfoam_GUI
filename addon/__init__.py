@@ -8,6 +8,7 @@ from . import dependencies
 
 classes = [
     preferences.ClassyBlocksPreferences,
+    properties.ClassyFacePatch,
     properties.ClassyMeshObjectProperties,
     properties.ClassyMeshSceneProperties,
     ui.CLASSY_PT_main_panel,
@@ -19,6 +20,9 @@ classes = [
     operators.CLASSY_OT_run_all,
     operators.CLASSY_OT_tag_extrude,
     operators.CLASSY_OT_tag_revolve,
+    operators.CLASSY_OT_tag_loft,
+    operators.CLASSY_OT_add_boundary_patch,
+    operators.CLASSY_OT_remove_boundary_patch,
     foam_directories.FoamDirectoryProperties,
     foam_directories.CLASSY_PT_foam_directories,
     tutorial_manager.TutorialManagerProperties,

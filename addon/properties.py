@@ -1,5 +1,29 @@
 import bpy
 
+
+class ClassyFacePatch(bpy.types.PropertyGroup):
+    side_name: bpy.props.StringProperty(
+        name="Side Name", 
+        description="Name of the classy_blocks side (e.g., top, bottom, outer, left, right)",
+        default="top"
+    )
+    patch_name: bpy.props.StringProperty(
+        name="Patch Name",
+        description="Name in OpenFOAM boundary",
+        default="defaultWall"
+    )
+    patch_type: bpy.props.EnumProperty(
+        name="Patch Type",
+        items=[
+            ("patch", "patch", "Standard inlet/outlet"),
+            ("wall", "wall", "Solid wall"),
+            ("symmetry", "symmetry", "Symmetry plane"),
+            ("empty", "empty", "Empty (2D cases)"),
+            ("wedge", "wedge", "Wedge (axisymmetric)")
+        ],
+        default="wall"
+    )
+
 class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
     exclude_from_mesh: bpy.props.BoolProperty(
         name="Exclude from Mesh",
@@ -13,6 +37,8 @@ class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
     )
     cells: bpy.props.IntVectorProperty(name="Cells X/Y/Z", default=(10, 10, 10), min=1)
     patch_name: bpy.props.StringProperty(name="Patch Name", default="defaultWall")
+    face_patches: bpy.props.CollectionProperty(type=ClassyFacePatch)
+    active_face_patch_index: bpy.props.IntProperty(default=0)
 
     # --- Block type ---
     block_type: bpy.props.EnumProperty(
@@ -26,6 +52,7 @@ class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
             ("WEDGE",         "Wedge",         "Axisymmetric 2D slice"),
             ("EXTRUDE",       "Extrude",       "Extruded 2D sketch"),
             ("REVOLVE",       "Revolve",       "Revolved 2D sketch"),
+            ("LOFT",          "Loft",          "Lofted between 2D sketches"),
         ],
         default="BOX",
     )

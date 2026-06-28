@@ -80,8 +80,21 @@ def extract_geometry(context):
                 spec = _build_extrude_spec(obj, props)
             elif block_type == "REVOLVE":
                 spec = _build_revolve_spec(obj, props)
+            elif block_type == "LOFT":
+                spec = _build_loft_spec(obj, props)
             else:
                 spec = _make_unsupported_spec(obj, props, "unknown-block-type")
+
+            # Inject per-face boundary conditions
+            if spec["type"] != "unsupported" and hasattr(props, "face_patches"):
+                patches = []
+                for fp in props.face_patches:
+                    patches.append({
+                        "side_name": fp.side_name,
+                        "patch_name": fp.patch_name,
+                        "patch_type": fp.patch_type
+                    })
+                spec["face_patches"] = patches
 
             blocks.append(spec)
             if spec["type"] == "unsupported":
@@ -300,7 +313,27 @@ def _make_unsupported_spec(obj, props, reason):
         "patch_name": _read_patch_name(props),
     }
 
-
+def _build_loft_spec(obj, props):
+    face_idx_bottom = getattr(props, "loft_bottom_face_index", 0)
+    face_idx_top = getattr(props, "loft_top_face_index", 1)
+    
+    try:
+        bottom_pts = _extract_face_vertices_local_bmesh(obj, face_idx_bottom)
+        top_pts = _extract_face_vertices_local_bmesh(obj, face_idx_top)
+    except Exception as e:
+        return _make_unsupported_spec(obj, props, f"invalid-loft-faces: {e}")
+        
+    return {
+        "type": "loft",
+        "name": obj.name,
+        "bottom_face": bottom_pts,
+        "top_face": top_pts,
+        "cells": _read_cells(props),
+        "patch_name": _read_patch_name(props),
+        **_read_grading(props),
+        **_read_chain_params(props),
+        "matrix_world": [list(row) for row in obj.matrix_world],
+    }
 
 def _extract_face_vertices_local_bmesh(obj, face_index):
     import bpy

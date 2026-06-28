@@ -65,6 +65,7 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                 edit_box.label(text="2D Sketch Tools", icon='EDITMODE_HLT')
                 edit_box.operator("classy.tag_extrude")
                 edit_box.operator("classy.tag_revolve")
+                edit_box.operator("classy.tag_loft")
                 layout.separator()
                 
             props = obj.classy_block_props
@@ -132,6 +133,12 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                     revolve_box.prop(props, "revolve_angle")
                     revolve_box.prop(props, "revolve_axis")
                     revolve_box.prop(props, "revolve_origin")
+                    
+                elif props.block_type == "LOFT":
+                    loft_box = layout.box()
+                    loft_box.label(text="Loft Parameters", icon='SURFACE_NSURFACE')
+                    loft_box.prop(props, "loft_bottom_face_index")
+                    loft_box.prop(props, "loft_top_face_index")
 
                 # --- Shape Chaining controls ---
                 if props.block_type in ("CYLINDER", "FRUSTUM"):
@@ -145,6 +152,32 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                     if props.chain_source:
                         chain_box.prop(props, "chain_length")
                         chain_box.prop(props, "chain_radius_2")
+
+                # --- Boundary Conditions ---
+                layout.separator()
+                bc_box = layout.box()
+                bc_box.label(text="Boundary Conditions", icon='MATERIAL')
+                
+                if props.block_type == "BOX":
+                    sides = "left, right, front, back, bottom, top"
+                elif props.block_type in ("CYLINDER", "FRUSTUM", "EXTRUDED_RING"):
+                    sides = "bottom, top, outer, inner"
+                else:
+                    sides = "bottom, top, (lateral edges)"
+                bc_box.label(text=f"Valid Sides: {sides}", icon='INFO')
+                
+                for idx, patch in enumerate(props.face_patches):
+                    row = bc_box.row()
+                    if idx == props.active_face_patch_index:
+                        row.alert = True
+                    row.prop(patch, "side_name", text="")
+                    row.prop(patch, "patch_name", text="")
+                    row.prop(patch, "patch_type", text="")
+                
+                row = bc_box.row()
+                row.operator("classy.add_boundary_patch", icon='ADD')
+                row.operator("classy.remove_boundary_patch", icon='REMOVE')
+                row.prop(props, "active_face_patch_index", text="Selected")
 
                 # --- Grading controls ---
                 layout.separator()

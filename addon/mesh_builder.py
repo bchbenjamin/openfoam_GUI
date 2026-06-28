@@ -24,7 +24,8 @@ TERRAIN PROJECTION (box only):
   - Geometry registered via mesh.add_geometry() (list-of-strings format)
 
 CRITICAL API NOTES:
-  - mesh.add(block)       <- correct
+  - _apply_face_patches(block, spec)
+ mesh.add(block)       <- correct
   - mesh.merge(block)     <- does NOT exist
   - cb.Extrude(face, vec) <- face must be cb.Face, NOT a raw list
   - cb.Revolve(face, ...) <- same: face must be cb.Face
@@ -104,6 +105,20 @@ def _apply_round_chops(shape, spec: Dict[str, Any], axial_cells: int | None = No
                 operation.set_cell_zone(spec["name"])
 
 
+
+def _apply_face_patches(shape, spec):
+    """Applies specific boundary conditions per face."""
+    patches = spec.get("face_patches", [])
+    for p in patches:
+        side_name = p.get("side_name")
+        patch_name = p.get("patch_name")
+        if side_name and patch_name:
+            try:
+                shape.set_patch(patch_name, side_name)
+            except Exception as e:
+                print(f"[classy_blocks]   WARNING: Failed to set patch '{patch_name}' on side '{side_name}': {e}")
+
+
 def _register_geometry(mesh: cb.Mesh, stl_name: str) -> None:
     """
     Registers an STL geometry in the mesh's geometry section.
@@ -144,6 +159,7 @@ def _build_box(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
         box.project_side(face_name, terrain_stl)
         print(f"[classy_blocks]   Terrain projection: '{face_name}' → '{terrain_stl}'")
     
+    _apply_face_patches(box, spec)
     mesh.add(box)
 
 
@@ -170,6 +186,7 @@ def _build_cylinder(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     _apply_round_chops(cyl, spec)
     if "matrix_world" in spec:
         cyl.transform(spec["matrix_world"])
+    _apply_face_patches(cyl, spec)
     mesh.add(cyl)
     return cyl
 
@@ -202,6 +219,7 @@ def _build_sphere(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
 
     for hemi in (upper, lower):
         _apply_round_chops(hemi, spec, axial_cells=max(1, int(spec["cells"][2])))
+        _apply_face_patches(hemi, spec)
         mesh.add(hemi)
 
 
@@ -224,6 +242,7 @@ def _build_disk(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
         **spec,
         "cells": [spec["cells"][0], spec["cells"][1], max(1, int(spec["cells"][2]))],
     })
+    _apply_face_patches(shape, spec)
     mesh.add(shape)
 
 
@@ -247,6 +266,7 @@ def _build_extrude(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     face = cb.Face(face_pts)
     extrude = cb.Extrude(face, vector)
     _apply_chops(extrude, spec)
+    _apply_face_patches(extrude, spec)
     mesh.add(extrude)
 
 
@@ -267,6 +287,7 @@ def _build_revolve(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     face = cb.Face(face_pts)
     revolve = cb.Revolve(face, angle_rad, axis, origin)
     _apply_chops(revolve, spec)
+    _apply_face_patches(revolve, spec)
     mesh.add(revolve)
 
 
@@ -295,6 +316,7 @@ def _build_frustum(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     _apply_round_chops(frustum, spec)
     if "matrix_world" in spec:
         frustum.transform(spec["matrix_world"])
+    _apply_face_patches(frustum, spec)
     mesh.add(frustum)
     return frustum
 
@@ -316,6 +338,7 @@ def _build_loft(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     top_face = cb.Face(top_pts)
     loft = cb.Loft(bottom_face, top_face)
     _apply_chops(loft, spec)
+    _apply_face_patches(loft, spec)
     mesh.add(loft)
 
 
@@ -343,6 +366,7 @@ def _build_wedge(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     _apply_chops(wedge, spec)
     if "matrix_world" in spec:
         wedge.transform(spec["matrix_world"])
+    _apply_face_patches(wedge, spec)
     mesh.add(wedge)
 
 
@@ -359,6 +383,7 @@ def _build_extruded_ring(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     _apply_round_chops(ring, spec)
     if "matrix_world" in spec:
         ring.transform(spec["matrix_world"])
+    _apply_face_patches(ring, spec)
     mesh.add(ring)
     return ring
 
@@ -436,6 +461,7 @@ def _build_chained_block(mesh: cb.Mesh, spec: Dict[str, Any],
             chained = cb.Cylinder.chain(source_shape, chain_length)
 
         _apply_round_chops(chained, spec)
+        _apply_face_patches(chained, spec)
         mesh.add(chained)
         return True
 

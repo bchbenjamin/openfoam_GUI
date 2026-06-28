@@ -520,3 +520,84 @@ class CLASSY_OT_tag_revolve(bpy.types.Operator):
         
         self.report({'INFO'}, f"Tagged Face {face_index} for Revolution")
         return {'FINISHED'}
+
+class CLASSY_OT_tag_loft(bpy.types.Operator):
+    """Tag two active quad faces for lofting"""
+    bl_idname = "classy.tag_loft"
+    bl_label = "Tag as Loft Block"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.mode == 'EDIT_MESH' and context.active_object
+
+    def execute(self, context):
+        import bmesh
+        obj = context.active_object
+        bm = bmesh.from_edit_mesh(obj.data)
+        
+        selected_faces = [f for f in bm.faces if f.select]
+        if len(selected_faces) != 2:
+            self.report({'ERROR'}, f"Lofting requires exactly 2 selected faces. You have {len(selected_faces)} selected.")
+            return {'CANCELLED'}
+            
+        for face in selected_faces:
+            if len(face.verts) != 4:
+                self.report({'ERROR'}, "Structured meshing requires exactly 4-sided quad faces.")
+                return {'CANCELLED'}
+        
+        face_index_1 = selected_faces[0].index
+        face_index_2 = selected_faces[1].index
+        
+        props = obj.classy_block_props
+        props.block_type = 'LOFT'
+        props.loft_bottom_face_index = face_index_1
+        props.loft_top_face_index = face_index_2
+        
+        self.report({'INFO'}, f"Tagged Faces {face_index_1} and {face_index_2} for Lofting")
+        return {'FINISHED'}
+
+class CLASSY_OT_add_boundary_patch(bpy.types.Operator):
+    """Add a new boundary condition for a side"""
+    bl_idname = "classy.add_boundary_patch"
+    bl_label = "Add Boundary"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object and hasattr(context.active_object, "classy_block_props")
+
+    def execute(self, context):
+        props = context.active_object.classy_block_props
+        new_patch = props.face_patches.add()
+        
+        # Set default side name based on block type if possible
+        if props.block_type in ("CYLINDER", "FRUSTUM", "EXTRUDED_RING"):
+            new_patch.side_name = "outer"
+        elif props.block_type in ("BOX",):
+            new_patch.side_name = "top"
+        else:
+            new_patch.side_name = "bottom"
+            
+        props.active_face_patch_index = len(props.face_patches) - 1
+        return {'FINISHED'}
+
+class CLASSY_OT_remove_boundary_patch(bpy.types.Operator):
+    """Remove the selected boundary condition"""
+    bl_idname = "classy.remove_boundary_patch"
+    bl_label = "Remove Boundary"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.active_object
+        if not obj or not hasattr(obj, "classy_block_props"):
+            return False
+        return len(obj.classy_block_props.face_patches) > 0
+
+    def execute(self, context):
+        props = context.active_object.classy_block_props
+        idx = props.active_face_patch_index
+        props.face_patches.remove(idx)
+        props.active_face_patch_index = max(0, idx - 1)
+        return {'FINISHED'}
