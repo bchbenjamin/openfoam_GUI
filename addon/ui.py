@@ -111,21 +111,17 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                     wedge_box.prop(props, "wedge_angle")
 
                 # --- Shape Chaining controls ---
-                if props.block_type in ("BOX", "CYLINDER", "FRUSTUM", "EXTRUDED_RING", "WEDGE"):
-                    # Chaining only makes sense for cylinder/frustum sources,
-                    # but any block can declare a chain_source
-                    pass  # No chaining UI for non-round block types
-
-                chain_box = layout.box()
-                chain_box.label(text="Shape Chaining (Pipe Networks)", icon='LINKED')
-                chain_box.prop_search(
-                    props, "chain_source",
-                    context.scene, "objects",
-                    text="Chain From"
-                )
-                if props.chain_source:
-                    chain_box.prop(props, "chain_length")
-                    chain_box.prop(props, "chain_radius_2")
+                if props.block_type in ("CYLINDER", "FRUSTUM"):
+                    chain_box = layout.box()
+                    chain_box.label(text="Shape Chaining (Pipe Networks)", icon='LINKED')
+                    chain_box.prop_search(
+                        props, "chain_source",
+                        context.scene, "objects",
+                        text="Chain From"
+                    )
+                    if props.chain_source:
+                        chain_box.prop(props, "chain_length")
+                        chain_box.prop(props, "chain_radius_2")
 
                 # --- Grading controls ---
                 layout.separator()
