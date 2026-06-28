@@ -133,7 +133,7 @@ def load_vtk_as_blender_mesh(vtk_path, mesh_name="BlockMesh_Result"):
         obj.location = (0, 0, 0)
         obj.select_set(True)
         if hasattr(obj, "classy_block_props"):
-            obj.classy_block_props.exclude_from_mesh = True
+            pass  # Let users decide whether to exclude result objects
             
         created_objs.append(obj)
         print(f"[vtk_importer]   Created Blender object: '{name}' "

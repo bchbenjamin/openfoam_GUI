@@ -19,11 +19,11 @@ class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
         name="Block Type",
         description="How this object maps to a classy_blocks block",
         items=[
-            ("BOX",     "Box",     "Axis-aligned rectangular block (uses bounding box)"),
-            ("EXTRUDE", "Extrude", "Extrude a quad face along a vector"),
-            ("REVOLVE", "Revolve", "Revolve a quad face around an axis"),
-            ("LOFT",    "Loft",    "Connect two quad faces (bottom to top)"),
-            ("WEDGE",   "Wedge",   "Axisymmetric 2D case (thin wedge slice)"),
+            ("BOX",           "Box",           "Axis-aligned rectangular block"),
+            ("CYLINDER",      "Cylinder",      "Standard cylindrical pipe"),
+            ("FRUSTUM",       "Frustum",       "Tapered cone or frustum"),
+            ("EXTRUDED_RING", "Extruded Ring", "Cylinder with a central hole (pipe wall)"),
+            ("WEDGE",         "Wedge",         "Axisymmetric 2D slice"),
         ],
         default="BOX",
     )
@@ -151,7 +151,7 @@ class ClassyMeshSceneProperties(bpy.types.PropertyGroup):
     # --- Auto-Update Mesh properties ---
     use_auto_update: bpy.props.BoolProperty(
         name="Auto-Update Mesh",
-        default=True,
+        default=False,
         description="Automatically mesh and reload on change if small project",
     )
 

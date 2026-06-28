@@ -132,29 +132,20 @@ def _build_box(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     """
     print(f"[classy_blocks]   Building Box: p_min={spec['p_min']}, p_max={spec['p_max']}")
     box = cb.Box(spec["p_min"], spec["p_max"])
-    
-    # Apply decomposed transforms using native API
-    rot_angle = spec.get("rotation_angle", 0.0)
-    rot_axis = spec.get("rotation_axis")
-    if rot_angle and rot_axis and abs(rot_angle) > 1e-6:
-        box.rotate(rot_angle, rot_axis, origin=[0, 0, 0])
-        
-    translation = spec.get("translation")
-    if translation:
-        box.translate(translation)
-        
     _apply_chops(box, spec)
-
+    if "matrix_world" in spec:
+        box.transform(spec["matrix_world"])
+    
     # User-specified single-face terrain projection
     for face_name, terrain_stl in spec.get("stl_projections", {}).items():
         if not terrain_stl or not terrain_stl.strip():
-            print(f"[classy_blocks]   WARNING: Skipping empty STL projection for face '{face_name}'")
             continue
         _register_geometry(mesh, terrain_stl)
         box.project_side(face_name, terrain_stl)
         print(f"[classy_blocks]   Terrain projection: '{face_name}' → '{terrain_stl}'")
-
+    
     mesh.add(box)
+
 
 
 def _build_cylinder(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
@@ -177,8 +168,11 @@ def _build_cylinder(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
 
     cyl = cb.Cylinder(axis_pt1, axis_pt2, radius_point)
     _apply_round_chops(cyl, spec)
+    if "matrix_world" in spec:
+        cyl.transform(spec["matrix_world"])
     mesh.add(cyl)
     return cyl
+
 
 
 def _build_sphere(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
@@ -289,13 +283,21 @@ def _build_frustum(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     axis_pt2 = spec["axis_pt2"]
     radius_point_1 = spec["radius_point_1"]
     radius_2 = spec["radius_2"]
+    # Clamp radius_2 for pointy cones — cb.Frustum cannot handle zero radius
+    radius_1 = spec.get("radius_1", 1.0)
+    if radius_2 < 1e-6:
+        radius_2 = max(radius_1 * 0.01, 1e-4)
+        print(f"[classy_blocks]   Cone apex clamped: r2={radius_2:.6f}")
     print(f"[classy_blocks]   Building Frustum: "
           f"axis=[{axis_pt1}→{axis_pt2}], r1={spec.get('radius_1', '?')}, r2={radius_2}")
 
     frustum = cb.Frustum(axis_pt1, axis_pt2, radius_point_1, radius_2)
     _apply_round_chops(frustum, spec)
+    if "matrix_world" in spec:
+        frustum.transform(spec["matrix_world"])
     mesh.add(frustum)
     return frustum
+
 
 
 def _build_loft(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
@@ -339,10 +341,26 @@ def _build_wedge(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     origin = spec.get("origin", [0, 0, 0])
     wedge = cb.Wedge(face, angle_rad, axis, origin)
     _apply_chops(wedge, spec)
+    if "matrix_world" in spec:
+        wedge.transform(spec["matrix_world"])
     mesh.add(wedge)
 
 
+
 # ─────────────────────── DISPATCHER ───────────────────────
+
+def _build_extruded_ring(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
+    axis_pt1 = spec["axis_pt1"]
+    axis_pt2 = spec["axis_pt2"]
+    outer_radius_pt = spec["outer_radius_pt"]
+    inner_radius = spec["inner_radius"]
+    print(f"[classy_blocks]   Building ExtrudedRing...")
+    ring = cb.ExtrudedRing(axis_pt1, axis_pt2, outer_radius_pt, inner_radius)
+    _apply_round_chops(ring, spec)
+    if "matrix_world" in spec:
+        ring.transform(spec["matrix_world"])
+    mesh.add(ring)
+    return ring
 
 _BUILDERS = {
     "box":         _build_box,
@@ -355,6 +373,7 @@ _BUILDERS = {
     "loft":        _build_loft,
     "wedge":       _build_wedge,
     "unsupported": _build_unsupported,
+    "extruded_ring": _build_extruded_ring,
 }
 
 

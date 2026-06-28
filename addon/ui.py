@@ -70,12 +70,8 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
 
             if not props.exclude_from_mesh:
                 row = header_box.row()
-                row.prop(props, "force_include", text="Force Include (Ignore zero-thickness)")
-                if props.force_include:
-                    warn_row = header_box.row()
-                    warn_row.alert = True
-                    warn_row.label(text="⚠ May cause blockMesh crash if actually 2D", icon='ERROR')
-                # Unapplied transform warning
+                
+                # Unapplied transform warning (deprecated in Phase 1, handled in geometry_extractor, but UI check is nice)
                 scale = obj.scale
                 if (abs(scale[0] - 1.0) > 1e-4 or
                     abs(scale[1] - 1.0) > 1e-4 or
@@ -93,33 +89,20 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                 header_box.prop(props, "block_type")
 
                 # --- Block-type specific parameters ---
-                if props.block_type == "EXTRUDE":
-                    ext_box = layout.box()
-                    ext_box.label(text="Extrude Parameters")
-                    ext_box.prop(props, "extrude_face_index")
-                    ext_box.prop(props, "extrude_axis")
-                    ext_box.prop(props, "extrude_distance")
-
-                elif props.block_type == "REVOLVE":
-                    rev_box = layout.box()
-                    rev_box.label(text="Revolve Parameters")
-                    rev_box.prop(props, "revolve_face_index")
-                    rev_box.prop(props, "revolve_angle")
-                    rev_box.prop(props, "revolve_axis")
-                    rev_box.prop(props, "revolve_origin")
-
-                elif props.block_type == "BOX":
+                if props.block_type == "BOX":
                     # STL projection (terrain) — only for BOX type
                     stl_box = layout.box()
                     stl_box.label(text="STL Face Projection (optional — terrain only)")
                     stl_box.prop(props, "stl_projection_face")
                     stl_box.prop(props, "stl_file")
 
-                elif props.block_type == "LOFT":
-                    loft_box = layout.box()
-                    loft_box.label(text="Loft Parameters", icon='MOD_SOLIDIFY')
-                    loft_box.prop(props, "loft_bottom_face_index")
-                    loft_box.prop(props, "loft_top_face_index")
+                elif props.block_type == "EXTRUDED_RING":
+                    ring_box = layout.box()
+                    ring_box.label(text="Extruded Ring Parameters")
+                    # (To be added: inner radius property in properties.py if needed, 
+                    # but for now, rely on local space if they modeled a ring, or 
+                    # we will add a property if needed. For now, empty or basic label)
+                    ring_box.label(text="Extracted from Local Bounding Box", icon='INFO')
 
                 elif props.block_type == "WEDGE":
                     wedge_box = layout.box()
@@ -128,7 +111,7 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                     wedge_box.prop(props, "wedge_angle")
 
                 # --- Shape Chaining controls ---
-                if props.block_type in ("BOX", "EXTRUDE", "REVOLVE", "LOFT", "WEDGE"):
+                if props.block_type in ("BOX", "CYLINDER", "FRUSTUM", "EXTRUDED_RING", "WEDGE"):
                     # Chaining only makes sense for cylinder/frustum sources,
                     # but any block can declare a chain_source
                     pass  # No chaining UI for non-round block types

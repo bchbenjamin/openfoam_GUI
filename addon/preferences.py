@@ -26,6 +26,12 @@ class ClassyBlocksPreferences(bpy.types.AddonPreferences):
         subtype='DIR_PATH',
         description="Global fallback case directory"
     )
+    last_case_dir: bpy.props.StringProperty(
+        name="Last Used Case Directory",
+        default="",
+        subtype='DIR_PATH',
+        description="Automatically remembered from last session"
+    )
     merge_tolerance: bpy.props.FloatProperty(
         name="Merge Tolerance",
         default=1e-4,

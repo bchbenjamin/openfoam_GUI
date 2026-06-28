@@ -61,8 +61,8 @@ def run_tests():
     cyl = bpy.context.active_object
     cyl.name = "Test_Cylinder"
     
-    # Sphere: scaled uniformly
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=1.0, location=(-3, 0, 0))
+    # Sphere: scaled uniformly (using icosphere to test icosphere detection path)
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=1.0, location=(-3, 0, 0))
     sphere = bpy.context.active_object
     sphere.name = "Test_Sphere"
     sphere.scale = (0.5, 0.5, 0.5)

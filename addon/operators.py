@@ -3,6 +3,7 @@ import datetime
 import bpy
 from . import mesh_builder, foam_runner, geometry_extractor, vtk_importer, case_setup
 from . import foam_path_utils
+from . import auto_update as _auto_update
 
 def set_status(context, status_msg):
     time_str = datetime.datetime.now().strftime("%H:%M:%S")
@@ -20,8 +21,19 @@ def get_case_path(context):
     if not case_path:
         prefs = getattr(context.preferences.addons.get(__package__), "preferences", None)
         if prefs:
-            case_path = prefs.default_case_dir
+            # Try explicit default first, then last-used
+            case_path = prefs.default_case_dir or prefs.last_case_dir
     return case_path
+
+
+def _save_last_case_dir(context, case_path):
+    """Persist the last-used case directory into AddonPreferences."""
+    try:
+        prefs = context.preferences.addons[__package__].preferences
+        if case_path and case_path != prefs.last_case_dir:
+            prefs.last_case_dir = case_path
+    except (KeyError, TypeError, AttributeError):
+        pass
 
 class CLASSY_OT_generate_mesh(bpy.types.Operator):
     """Generate blockMeshDict from tagged Blender objects"""
@@ -102,6 +114,7 @@ class CLASSY_OT_generate_mesh(bpy.types.Operator):
             self.report({'INFO'},
                         f"Generated blockMeshDict ({file_size} bytes) & Case Files")
             set_status(context, "Success: blockMeshDict generated")
+            _save_last_case_dir(context, case_path)
             return {'FINISHED'}
 
         except Exception as e:
@@ -389,6 +402,9 @@ class CLASSY_OT_run_all(bpy.types.Operator):
 
     def execute(self, context):
         context.window.cursor_set('WAIT')
+        # Hold the auto-update lock for the entire pipeline so the depsgraph
+        # changes from VTK mesh import don't schedule a second run.
+        _auto_update.is_auto_updating = True
         try:
             # Step 1: Generate blockMeshDict
             result = bpy.ops.classy.generate_mesh()
@@ -428,4 +444,5 @@ class CLASSY_OT_run_all(bpy.types.Operator):
             import traceback; traceback.print_exc()
             return {'CANCELLED'}
         finally:
+            _auto_update.is_auto_updating = False
             context.window.cursor_set('DEFAULT')

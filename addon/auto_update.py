@@ -43,8 +43,12 @@ def run_pipeline_if_needed():
         
     try:
         is_auto_updating = True
-        # Run the pipeline
-        bpy.ops.classy.run_all()
+        # Run the pipeline — suppress RuntimeError from sub-operators
+        # to avoid redundant UI error messages during interactive editing
+        try:
+            bpy.ops.classy.run_all()
+        except RuntimeError:
+            pass  # Pipeline failures are already logged to console
     except Exception as e:
         print(f"Auto-update failed: {e}")
     finally:
