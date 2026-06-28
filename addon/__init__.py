@@ -1,4 +1,10 @@
 bl_info = {"name": "Classy Blocks Integration", "category": "Mesh", "blender": (4, 0, 0)}
+"""
+Classy Blocks Integration Add-on for Blender.
+
+This package registers the Blender add-on, initializes the Parametric Structured
+Mesh Builder pipeline, and ties together the UI, operators, and core extraction logic.
+"""
 import bpy
 from . import properties, ui, operators, geometry_extractor, vtk_importer, preferences
 from . import foam_directories
@@ -61,7 +67,7 @@ def _on_load_post(filepath):
         scene_props.use_auto_update = False
 
     except Exception as e:
-        print(f"[classy_blocks] load_post handler error: {e}")
+        pass
 
 
 def register():

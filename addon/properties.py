@@ -1,3 +1,10 @@
+"""
+Property definitions for the Classy Blocks add-on.
+
+Defines all custom Blender properties (PropertyGroups, Enums, Strings) attached
+to Scene and Object types, serving as the data model for the mesh builder.
+"""
+
 import bpy
 
 

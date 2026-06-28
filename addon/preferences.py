@@ -1,3 +1,10 @@
+"""
+Add-on Preferences.
+
+Defines the global settings for the add-on accessible via Edit -> Preferences,
+including auto-update limits and bashrc source paths.
+"""
+
 import bpy
 import os
 

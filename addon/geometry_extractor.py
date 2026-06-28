@@ -56,14 +56,14 @@ def extract_geometry(context):
         props = getattr(obj, "classy_block_props", None)
 
         if props and getattr(props, "exclude_from_mesh", False):
-            print(f"[classy_blocks] Skipping '{obj.name}' (excluded)")
+            pass
             continue
 
         block_type = getattr(props, "block_type", "BOX") if props else "BOX"
         transform_warning = _check_applied_transforms(obj, block_type)
         if transform_warning:
             warnings.append(transform_warning)
-            print(f"[classy_blocks]   WARNING: {transform_warning}")
+            pass
 
         try:
             if block_type == "BOX":
@@ -100,14 +100,14 @@ def extract_geometry(context):
             if spec["type"] == "unsupported":
                 warnings.append(spec.get("warning", "Unsupported shape"))
             else:
-                print(f"[classy_blocks] Extracted '{spec['type']}' block: '{obj.name}'")
+                pass
 
         except Exception as e:
-            print(f"[classy_blocks] ERROR extracting '{obj.name}': {e}")
+            pass
             import traceback; traceback.print_exc()
             continue
 
-    print(f"[classy_blocks] Total blocks extracted: {len(blocks)}")
+    pass
     return {
         "blocks": blocks,
         "merge_tolerance": 1e-4,
@@ -304,7 +304,7 @@ def _build_wedge_spec(obj, props):
 def _make_unsupported_spec(obj, props, reason):
     friendly = reason
     warning = (f"{obj.name}: {friendly} — skipped during blockMesh generation.")
-    print(warning)
+    pass
     return {
         "type": "unsupported",
         "name": obj.name,

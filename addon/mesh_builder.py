@@ -1,3 +1,10 @@
+"""
+Mesh Builder module.
+
+Receives extracted parametric specifications and invokes the classy_blocks Python API
+to construct conformal, structured blockMesh geometries.
+"""
+
 from __future__ import annotations
 """
 addon/mesh_builder.py
@@ -116,7 +123,7 @@ def _apply_face_patches(shape, spec):
             try:
                 shape.set_patch(patch_name, side_name)
             except Exception as e:
-                print(f"[classy_blocks]   WARNING: Failed to set patch '{patch_name}' on side '{side_name}': {e}")
+                pass
 
 
 def _register_geometry(mesh: cb.Mesh, stl_name: str) -> None:
@@ -134,7 +141,7 @@ def _register_geometry(mesh: cb.Mesh, stl_name: str) -> None:
             f'file "{stl_name}"'
         ]
     })
-    print(f"[classy_blocks]   Registered geometry: '{stl_name}'")
+    pass
 
 
 def _build_box(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
@@ -145,7 +152,7 @@ def _build_box(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     so this function no longer handles self-projection. It only handles
     user-specified single-face terrain projection.
     """
-    print(f"[classy_blocks]   Building Box: p_min={spec['p_min']}, p_max={spec['p_max']}")
+    pass
     box = cb.Box(spec["p_min"], spec["p_max"])
     _apply_chops(box, spec)
     if "matrix_world" in spec:
@@ -157,7 +164,7 @@ def _build_box(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
             continue
         _register_geometry(mesh, terrain_stl)
         box.project_side(face_name, terrain_stl)
-        print(f"[classy_blocks]   Terrain projection: '{face_name}' → '{terrain_stl}'")
+        pass
     
     _apply_face_patches(box, spec)
     mesh.add(box)
@@ -179,8 +186,7 @@ def _build_cylinder(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     axis_pt2 = spec["axis_pt2"]
     radius_point = spec["radius_point"]
     radius = spec.get("radius", "?")
-    print(f"[classy_blocks]   Building Cylinder: "
-          f"axis=[{axis_pt1}→{axis_pt2}], radius={radius}")
+    pass
 
     cyl = cb.Cylinder(axis_pt1, axis_pt2, radius_point)
     _apply_round_chops(cyl, spec)
@@ -204,8 +210,7 @@ def _build_sphere(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     radius = spec.get("radius", "?")
     split = spec.get("split_axis", [0, 0, 1])
     neg_split = [-split[0], -split[1], -split[2]]
-    print(f"[classy_blocks]   Building Sphere: center={center}, radius={radius}, "
-          f"split_axis={[round(s,3) for s in split]}")
+    pass
           
     shared_label = f"sphere_{spec.get('name', 'obj')}"
     
@@ -233,8 +238,7 @@ def _build_disk(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     thickness = spec["thickness"]
     vector = [float(component) * float(thickness) for component in normal]
 
-    print(f"[classy_blocks]   Building Disk: center={center}, "
-          f"thickness={thickness}, source={spec.get('source_kind')}")
+    pass
 
     disk = cb.FourCoreDisk(center, radius_point, normal)
     shape = cb.ExtrudedShape(disk, vector)
@@ -247,8 +251,7 @@ def _build_disk(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
 
 
 def _build_unsupported(_mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
-    print(f"[classy_blocks]   WARNING: skipping unsupported object "
-          f"'{spec.get('name')}' ({spec.get('reason', 'unknown reason')})")
+    pass
 
 
 def _build_extrude(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
@@ -261,7 +264,7 @@ def _build_extrude(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     """
     face_pts = spec["face"]
     vector = spec["extrude_vector"]
-    print(f"[classy_blocks]   Building Extrude: face={face_pts[0]}..., vector={vector}")
+    pass
 
     face = cb.Face(face_pts)
     extrude = cb.Extrude(face, vector)
@@ -281,8 +284,7 @@ def _build_revolve(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     angle_rad = math.radians(spec["angle_deg"])
     axis = spec["axis"]
     origin = spec["origin"]
-    print(f"[classy_blocks]   Building Revolve: angle={spec['angle_deg']}°, "
-          f"axis={axis}, origin={origin}")
+    pass
 
     face = cb.Face(face_pts)
     revolve = cb.Revolve(face, angle_rad, axis, origin)
@@ -308,9 +310,8 @@ def _build_frustum(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     radius_1 = spec.get("radius_1", 1.0)
     if radius_2 < 1e-6:
         radius_2 = max(radius_1 * 0.01, 1e-4)
-        print(f"[classy_blocks]   Cone apex clamped: r2={radius_2:.6f}")
-    print(f"[classy_blocks]   Building Frustum: "
-          f"axis=[{axis_pt1}→{axis_pt2}], r1={spec.get('radius_1', '?')}, r2={radius_2}")
+        pass
+    pass
 
     frustum = cb.Frustum(axis_pt1, axis_pt2, radius_point_1, radius_2)
     _apply_round_chops(frustum, spec)
@@ -331,8 +332,7 @@ def _build_loft(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     """
     bottom_pts = spec["bottom_face"]
     top_pts = spec["top_face"]
-    print(f"[classy_blocks]   Building Loft: bottom={bottom_pts[0]}..., "
-          f"top={top_pts[0]}...")
+    pass
 
     bottom_face = cb.Face(bottom_pts)
     top_face = cb.Face(top_pts)
@@ -356,8 +356,7 @@ def _build_wedge(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     face_pts = spec["face"]
     angle_deg = spec.get("angle_deg", 2.0)
     angle_rad = math.radians(angle_deg)
-    print(f"[classy_blocks]   Building Wedge: angle={angle_deg}°, "
-          f"face={face_pts[0]}...")
+    pass
 
     face = cb.Face(face_pts)
     axis = spec.get("axis", [1, 0, 0])
@@ -378,7 +377,7 @@ def _build_extruded_ring(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     axis_pt2 = spec["axis_pt2"]
     outer_radius_pt = spec["outer_radius_pt"]
     inner_radius = spec["inner_radius"]
-    print(f"[classy_blocks]   Building ExtrudedRing...")
+    pass
     ring = cb.ExtrudedRing(axis_pt1, axis_pt2, outer_radius_pt, inner_radius)
     _apply_round_chops(ring, spec)
     if "matrix_world" in spec:
@@ -449,15 +448,13 @@ def _build_chained_block(mesh: cb.Mesh, spec: Dict[str, Any],
     try:
         if chain_radius_2 > 0:
             # Chain as a frustum (tapered connection)
-            print(f"[classy_blocks]   Chaining Frustum from source: "
-                  f"length={chain_length}, end_radius={chain_radius_2}")
+            pass
             chained = cb.Frustum.chain(
                 source_shape, chain_length, chain_radius_2
             )
         else:
             # Chain as a cylinder (same radius)
-            print(f"[classy_blocks]   Chaining Cylinder from source: "
-                  f"length={chain_length}")
+            pass
             chained = cb.Cylinder.chain(source_shape, chain_length)
 
         _apply_round_chops(chained, spec)
@@ -466,7 +463,7 @@ def _build_chained_block(mesh: cb.Mesh, spec: Dict[str, Any],
         return True
 
     except Exception as e:
-        print(f"[classy_blocks]   ERROR chaining '{block_name}': {e}")
+        pass
         import traceback; traceback.print_exc()
         return False
 
@@ -506,8 +503,7 @@ def build_from_spec(spec: Dict[str, Any], output_path: str) -> None:
         block_name = block_spec.get("name", "unnamed")
         block_type = block_spec.get("type", "box")
         grading_type = block_spec.get("grading_type", "RATIO")
-        print(f"[classy_blocks] Building {block_type} block: '{block_name}' "
-              f"(grading: {grading_type})")
+        pass
 
         # For round shapes, capture the returned object for chaining
         if block_type in ("cylinder", "frustum"):
@@ -524,13 +520,11 @@ def build_from_spec(spec: Dict[str, Any], output_path: str) -> None:
     for block_spec in chained:
         block_name = block_spec.get("name", "unnamed")
         source_name = block_spec["chain_source"]
-        print(f"[classy_blocks] Building chained block: '{block_name}' "
-              f"(from '{source_name}')")
+        pass
 
         source_shape = built_shapes.get(source_name)
         if source_shape is None:
-            print(f"[classy_blocks]   ERROR: Chain source '{source_name}' not "
-                  f"found. Available sources: {list(built_shapes.keys())}")
+            pass
             continue
 
         if _build_chained_block(mesh, block_spec, source_shape):
@@ -539,7 +533,6 @@ def build_from_spec(spec: Dict[str, Any], output_path: str) -> None:
     if built_blocks == 0:
         raise ValueError("No supported blocks were available to write blockMeshDict")
 
-    print(f"[classy_blocks] Writing blockMeshDict to: {output_path}")
+    pass
     mesh.write(output_path)
-    print(f"[classy_blocks] Written blockMeshDict: {output_path} "
-          f"({os.path.getsize(output_path)} bytes)")
+    pass

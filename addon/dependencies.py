@@ -1,3 +1,10 @@
+"""
+Dependency Management.
+
+Checks for and installs required third-party Python packages (like classy_blocks
+and PyVista) to ensure the add-on functions correctly in the local Blender Python env.
+"""
+
 import bpy
 import sys
 import subprocess

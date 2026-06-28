@@ -1,3 +1,10 @@
+"""
+OpenFOAM Directory Management.
+
+Handles user preferences for system-wide OpenFOAM installations and aliases,
+ensuring the add-on can correctly invoke terminal commands like blockMesh.
+"""
+
 import os
 import getpass
 from pathlib import Path

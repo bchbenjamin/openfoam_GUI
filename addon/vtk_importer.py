@@ -93,9 +93,9 @@ def load_vtk_as_blender_mesh(vtk_path, mesh_name="BlockMesh_Result"):
         )
 
     # 4. Log mesh statistics
-    print(f"[vtk_importer] Loading: {vtk_path}")
-    print(f"[vtk_importer]   Volume: {pv_mesh.n_points} points, {pv_mesh.n_cells} cells")
-    print(f"[vtk_importer]   Surface: {surface.n_points} points, {surface.n_cells} faces")
+    pass
+    pass
+    pass
 
     # Split into disconnected bodies (may fail on some VTK grid types)
     try:
@@ -103,7 +103,7 @@ def load_vtk_as_blender_mesh(vtk_path, mesh_name="BlockMesh_Result"):
         if len(bodies) == 0:
             bodies = [surface]
     except (AttributeError, RuntimeError, Exception) as e:
-        print(f"[vtk_importer]   split_bodies() failed ({e}), treating as single body")
+        pass
         bodies = [surface]
     
     # Remove old objects
@@ -136,8 +136,7 @@ def load_vtk_as_blender_mesh(vtk_path, mesh_name="BlockMesh_Result"):
             pass  # Let users decide whether to exclude result objects
             
         created_objs.append(obj)
-        print(f"[vtk_importer]   Created Blender object: '{name}' "
-              f"({len(vertices)} verts, {len(faces)} faces)")
+        pass
 
     if created_objs:
         bpy.context.view_layer.objects.active = created_objs[0]
@@ -203,4 +202,4 @@ def _remove_existing_objects_with_prefix(prefix):
         if mesh_data and mesh_data.users == 0:
             bpy.data.meshes.remove(mesh_data)
 
-        print(f"[vtk_importer]   Removed existing object: '{obj_name}'")
+        pass

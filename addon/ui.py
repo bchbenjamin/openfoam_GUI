@@ -1,3 +1,10 @@
+"""
+User Interface for the Classy Blocks add-on.
+
+Provides the 3D Viewport side-panel (N-panel) UI, enabling users to interact with
+the Parametric Structured Mesh Builder, set boundary conditions, and run pipelines.
+"""
+
 import bpy
 
 class CLASSY_PT_main_panel(bpy.types.Panel):

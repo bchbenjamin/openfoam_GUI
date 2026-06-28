@@ -1,3 +1,10 @@
+"""
+OpenFOAM Subprocess Runner.
+
+Executes OpenFOAM binaries (blockMesh, foamToVTK) via Python subprocess,
+capturing standard output and error streams for Blender UI reporting.
+"""
+
 # addon/foam_runner.py
 # Runs OpenFOAM 13 utilities as subprocesses with correct environment injection.
 # No Blender imports — fully testable with plain Python.

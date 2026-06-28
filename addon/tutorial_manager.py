@@ -1,3 +1,10 @@
+"""
+Tutorial Manager.
+
+Allows users to search, browse, and copy official OpenFOAM tutorial cases into
+their workspace directly from the Blender interface.
+"""
+
 import bpy
 import os
 import shutil

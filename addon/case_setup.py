@@ -1,3 +1,10 @@
+"""
+OpenFOAM Case Setup utilities.
+
+Handles the generation of required OpenFOAM case files (e.g., controlDict) to ensure
+the generated blockMeshDict resides in a valid, runnable environment.
+"""
+
 # addon/case_setup.py
 # Sets up OpenFOAM 13 case files. Uses the new foamRun + solvers{ } syntax.
 # icoFoam/simpleFoam no longer exist as standalone commands in OF13.
@@ -178,16 +185,16 @@ def setup_incompressible_case(
     _write(os.path.join(zero_dir, "U"), _build_U(patch_names, inlet_velocity))
     _write(os.path.join(zero_dir, "p"), _build_p(patch_names))
 
-    print(f"OpenFOAM 13 case setup complete:{case_path}")
-    print(f"  Solver: foamRun (module:{solver_module})")
-    print(f"  To run: cd{case_path} && blockMesh && foamRun")
+    pass
+    pass
+    pass
 
 def _write(path: str, content: str) -> None:
     """Writes content to a file, creating parent directories as needed."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
         f.write(content)
-    print(f"  Written:{path}")
+    pass
 
 def _build_U(patch_names: List[str], inlet_velocity: List[float]) -> str:
     """

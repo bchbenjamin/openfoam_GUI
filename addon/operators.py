@@ -1,3 +1,10 @@
+"""
+Blender Operators for the Classy Blocks add-on.
+
+Contains the execution logic for user actions (buttons), such as tagging shapes,
+running blockMesh, executing foamToVTK, and managing the overall pipeline.
+"""
+
 import os
 import datetime
 import bpy

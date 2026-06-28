@@ -1,3 +1,10 @@
+"""
+OpenFOAM Path Utilities.
+
+Provides helper functions to resolve, validate, and manage directory paths for
+OpenFOAM cases to ensure safety and correctness before execution.
+"""
+
 # addon/foam_path_utils.py
 # Pure-Python utilities for OpenFOAM path validation and normalization.
 # No Blender imports — fully testable with plain Python/pytest.

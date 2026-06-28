@@ -1,3 +1,10 @@
+"""
+Auto-Update mechanism.
+
+Listens to Blender depsgraph updates and automatically triggers mesh regeneration
+when small parametric changes are made, providing real-time CFD mesh feedback.
+"""
+
 import bpy
 import time
 
@@ -50,7 +57,7 @@ def run_pipeline_if_needed():
         except RuntimeError:
             pass  # Pipeline failures are already logged to console
     except Exception as e:
-        print(f"Auto-update failed: {e}")
+        pass
     finally:
         is_auto_updating = False
         
