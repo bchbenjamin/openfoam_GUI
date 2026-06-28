@@ -17,6 +17,8 @@ classes = [
     operators.CLASSY_OT_reload_mesh,
     operators.MESH_OT_export_terrain_stl,
     operators.CLASSY_OT_run_all,
+    operators.CLASSY_OT_tag_extrude,
+    operators.CLASSY_OT_tag_revolve,
     foam_directories.FoamDirectoryProperties,
     foam_directories.CLASSY_PT_foam_directories,
     tutorial_manager.TutorialManagerProperties,

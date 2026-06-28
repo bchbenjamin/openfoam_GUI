@@ -76,6 +76,10 @@ def extract_geometry(context):
                 spec = _build_extruded_ring_spec(obj, props)
             elif block_type == "WEDGE":
                 spec = _build_wedge_spec(obj, props)
+            elif block_type == "EXTRUDE":
+                spec = _build_extrude_spec(obj, props)
+            elif block_type == "REVOLVE":
+                spec = _build_revolve_spec(obj, props)
             else:
                 spec = _make_unsupported_spec(obj, props, "unknown-block-type")
 
@@ -294,6 +298,96 @@ def _make_unsupported_spec(obj, props, reason):
         "reason": reason,
         "warning": warning,
         "patch_name": _read_patch_name(props),
+    }
+
+
+
+def _extract_face_vertices_local_bmesh(obj, face_index):
+    import bpy
+    import bmesh
+    
+    # Try bmesh first (crucial for un-applied Edit Mode changes)
+    if obj.mode == 'EDIT':
+        bm = bmesh.from_edit_mesh(obj.data)
+    else:
+        bm = bmesh.new()
+        bm.from_mesh(obj.data)
+        
+    bm.faces.ensure_lookup_table()
+    
+    if face_index >= len(bm.faces):
+        if obj.mode != 'EDIT':
+            bm.free()
+        raise IndexError(f"Face index {face_index} out of range.")
+        
+    face = bm.faces[face_index]
+    if len(face.verts) != 4:
+        if obj.mode != 'EDIT':
+            bm.free()
+        raise ValueError("Face must have exactly 4 vertices.")
+        
+    verts_local = [[v.co.x, v.co.y, v.co.z] for v in face.verts]
+    
+    if obj.mode != 'EDIT':
+        bm.free()
+        
+    return verts_local
+
+def _build_extrude_spec(obj, props):
+    face_index = getattr(props, "extrude_face_index", 0)
+    axis = getattr(props, "extrude_axis", "Z")
+    dist = getattr(props, "extrude_distance", 1.0)
+    
+    try:
+        face_pts = _extract_face_vertices_local_bmesh(obj, face_index)
+    except Exception as e:
+        return _make_unsupported_spec(obj, props, f"invalid-extrude-face: {e}")
+        
+    vec = [0.0, 0.0, 0.0]
+    if axis == "X": vec[0] = dist
+    elif axis == "Y": vec[1] = dist
+    elif axis == "Z": vec[2] = dist
+    
+    return {
+        "type": "extrude",
+        "name": obj.name,
+        "face": face_pts,
+        "extrude_vector": vec,
+        "cells": _read_cells(props),
+        "patch_name": _read_patch_name(props),
+        **_read_grading(props),
+        **_read_chain_params(props),
+        "matrix_world": [list(row) for row in obj.matrix_world],
+    }
+
+def _build_revolve_spec(obj, props):
+    face_index = getattr(props, "revolve_face_index", 0)
+    angle_deg = getattr(props, "revolve_angle", 90.0)
+    axis_str = getattr(props, "revolve_axis", "Z")
+    origin = getattr(props, "revolve_origin", (0,0,0))
+    
+    try:
+        face_pts = _extract_face_vertices_local_bmesh(obj, face_index)
+    except Exception as e:
+        return _make_unsupported_spec(obj, props, f"invalid-revolve-face: {e}")
+        
+    axis = [0.0, 0.0, 0.0]
+    if axis_str == "X": axis[0] = 1.0
+    elif axis_str == "Y": axis[1] = 1.0
+    elif axis_str == "Z": axis[2] = 1.0
+    
+    return {
+        "type": "revolve",
+        "name": obj.name,
+        "face": face_pts,
+        "angle_deg": angle_deg,
+        "axis": axis,
+        "origin": list(origin),
+        "cells": _read_cells(props),
+        "patch_name": _read_patch_name(props),
+        **_read_grading(props),
+        **_read_chain_params(props),
+        "matrix_world": [list(row) for row in obj.matrix_world],
     }
 
 # ─────────────────────── HELPERS ───────────────────────

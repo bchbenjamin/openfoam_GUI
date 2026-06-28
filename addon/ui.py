@@ -59,6 +59,14 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
         obj = context.active_object
         if obj and obj.type == 'MESH':
             layout.separator()
+            
+            if context.mode == 'EDIT_MESH':
+                edit_box = layout.box()
+                edit_box.label(text="2D Sketch Tools", icon='EDITMODE_HLT')
+                edit_box.operator("classy.tag_extrude")
+                edit_box.operator("classy.tag_revolve")
+                layout.separator()
+                
             props = obj.classy_block_props
 
             # Exclusion toggle
@@ -109,6 +117,21 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                     wedge_box.label(text="Wedge Parameters (Axisymmetric)", icon='MOD_SCREW')
                     wedge_box.prop(props, "wedge_face_index")
                     wedge_box.prop(props, "wedge_angle")
+                
+                elif props.block_type == "EXTRUDE":
+                    extrude_box = layout.box()
+                    extrude_box.label(text="Extrude Parameters", icon='MESH_CUBE')
+                    extrude_box.prop(props, "extrude_face_index")
+                    extrude_box.prop(props, "extrude_axis")
+                    extrude_box.prop(props, "extrude_distance")
+                
+                elif props.block_type == "REVOLVE":
+                    revolve_box = layout.box()
+                    revolve_box.label(text="Revolve Parameters", icon='MESH_CIRCLE')
+                    revolve_box.prop(props, "revolve_face_index")
+                    revolve_box.prop(props, "revolve_angle")
+                    revolve_box.prop(props, "revolve_axis")
+                    revolve_box.prop(props, "revolve_origin")
 
                 # --- Shape Chaining controls ---
                 if props.block_type in ("CYLINDER", "FRUSTUM"):

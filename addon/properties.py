@@ -24,6 +24,8 @@ class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
             ("FRUSTUM",       "Frustum",       "Tapered cone or frustum"),
             ("EXTRUDED_RING", "Extruded Ring", "Cylinder with a central hole (pipe wall)"),
             ("WEDGE",         "Wedge",         "Axisymmetric 2D slice"),
+            ("EXTRUDE",       "Extrude",       "Extruded 2D sketch"),
+            ("REVOLVE",       "Revolve",       "Revolved 2D sketch"),
         ],
         default="BOX",
     )

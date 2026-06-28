@@ -446,3 +446,77 @@ class CLASSY_OT_run_all(bpy.types.Operator):
         finally:
             _auto_update.is_auto_updating = False
             context.window.cursor_set('DEFAULT')
+
+class CLASSY_OT_tag_extrude(bpy.types.Operator):
+    """Tag the active quad face for extrusion"""
+    bl_idname = "classy.tag_extrude"
+    bl_label = "Tag as Extrude Block"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.mode == 'EDIT_MESH' and context.active_object
+
+    def execute(self, context):
+        import bmesh
+        obj = context.active_object
+        bm = bmesh.from_edit_mesh(obj.data)
+        
+        active_face = bm.faces.active
+        if not active_face or not active_face.select:
+            # Fallback to finding a selected face
+            selected_faces = [f for f in bm.faces if f.select]
+            if not selected_faces:
+                self.report({'ERROR'}, "No face selected. Please select a quad face.")
+                return {'CANCELLED'}
+            active_face = selected_faces[0]
+
+        if len(active_face.verts) != 4:
+            self.report({'ERROR'}, "Structured meshing requires exactly 4-sided quad faces.")
+            return {'CANCELLED'}
+            
+        face_index = active_face.index
+        
+        # Tag it
+        props = obj.classy_block_props
+        props.block_type = 'EXTRUDE'
+        props.extrude_face_index = face_index
+        
+        self.report({'INFO'}, f"Tagged Face {face_index} for Extrusion")
+        return {'FINISHED'}
+
+class CLASSY_OT_tag_revolve(bpy.types.Operator):
+    """Tag the active quad face for revolution"""
+    bl_idname = "classy.tag_revolve"
+    bl_label = "Tag as Revolve Block"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.mode == 'EDIT_MESH' and context.active_object
+
+    def execute(self, context):
+        import bmesh
+        obj = context.active_object
+        bm = bmesh.from_edit_mesh(obj.data)
+        
+        active_face = bm.faces.active
+        if not active_face or not active_face.select:
+            selected_faces = [f for f in bm.faces if f.select]
+            if not selected_faces:
+                self.report({'ERROR'}, "No face selected. Please select a quad face.")
+                return {'CANCELLED'}
+            active_face = selected_faces[0]
+
+        if len(active_face.verts) != 4:
+            self.report({'ERROR'}, "Structured meshing requires exactly 4-sided quad faces.")
+            return {'CANCELLED'}
+            
+        face_index = active_face.index
+        
+        props = obj.classy_block_props
+        props.block_type = 'REVOLVE'
+        props.revolve_face_index = face_index
+        
+        self.report({'INFO'}, f"Tagged Face {face_index} for Revolution")
+        return {'FINISHED'}
