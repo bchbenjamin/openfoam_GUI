@@ -8,6 +8,7 @@ ensuring the add-on can correctly invoke terminal commands like blockMesh.
 import os
 import getpass
 from pathlib import Path
+# pyrefly: ignore [missing-import]
 import bpy
 
 def auto_detect_foam_dirs():
@@ -15,6 +16,7 @@ def auto_detect_foam_dirs():
     foam_tutorials = os.environ.get('FOAM_TUTORIALS', '')
     
     if not foam_run or not foam_tutorials:
+        # pyrefly: ignore [import-outside-toplevel]
         import subprocess
         username = getpass.getuser()
         common_bashrcs = [

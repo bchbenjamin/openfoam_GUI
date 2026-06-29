@@ -5,6 +5,7 @@ Defines the global settings for the add-on accessible via Edit -> Preferences,
 including auto-update limits and bashrc source paths.
 """
 
+# pyrefly: ignore [missing-import]
 import bpy
 import os
 

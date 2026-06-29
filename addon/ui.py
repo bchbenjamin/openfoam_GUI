@@ -5,6 +5,7 @@ Provides the 3D Viewport side-panel (N-panel) UI, enabling users to interact wit
 the Parametric Structured Mesh Builder, set boundary conditions, and run pipelines.
 """
 
+# pyrefly: ignore [missing-import]
 import bpy
 
 class CLASSY_PT_main_panel(bpy.types.Panel):

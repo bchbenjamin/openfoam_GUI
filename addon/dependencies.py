@@ -5,6 +5,7 @@ Checks for and installs required third-party Python packages (like classy_blocks
 and PyVista) to ensure the add-on functions correctly in the local Blender Python env.
 """
 
+# pyrefly: ignore [missing-import]
 import bpy
 import sys
 import subprocess

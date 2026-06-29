@@ -19,6 +19,7 @@ CALLED BY: operators.py → CLASSY_OT_reload_mesh.execute()
 import os
 import glob
 
+# pyrefly: ignore [missing-import]
 import bpy
 try:
     import pyvista as pv

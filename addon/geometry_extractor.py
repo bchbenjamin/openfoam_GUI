@@ -39,6 +39,7 @@ COORDINATE PRESERVATION:
 CALLED BY: operators.py → CLASSY_OT_generate_mesh.execute()
 """
 
+import subprocess
 import os
 import math
 import tempfile
@@ -115,6 +116,7 @@ def extract_geometry(context):
     }
 
 def _check_applied_transforms(obj, block_type):
+    # pyrefly: ignore [import-outside-toplevel, missing-import]
     import bpy
     scale = obj.scale
     if any(abs(s - 1.0) > 1e-4 for s in scale):
@@ -201,6 +203,7 @@ def _build_cylinder_spec(obj, props):
     }
 
 def _build_frustum_spec(obj, props):
+    # pyrefly: ignore [import-outside-toplevel, missing-import]
     import bpy
     depsgraph = bpy.context.evaluated_depsgraph_get()
     obj_eval = obj.evaluated_get(depsgraph)
@@ -238,6 +241,7 @@ def _build_frustum_spec(obj, props):
     }
 
 def _build_extruded_ring_spec(obj, props):
+    # pyrefly: ignore [import-outside-toplevel, missing-import]
     import bpy
     depsgraph = bpy.context.evaluated_depsgraph_get()
     obj_eval = obj.evaluated_get(depsgraph)
@@ -273,6 +277,7 @@ def _build_extruded_ring_spec(obj, props):
     }
 
 def _build_wedge_spec(obj, props):
+    # pyrefly: ignore [import-outside-toplevel, missing-import]
     import bpy
     face_index = getattr(props, "wedge_face_index", 0)
     angle_deg = getattr(props, "wedge_angle", 2.0)
@@ -336,7 +341,9 @@ def _build_loft_spec(obj, props):
     }
 
 def _extract_face_vertices_local_bmesh(obj, face_index):
+    # pyrefly: ignore [import-outside-toplevel, missing-import]
     import bpy
+    # pyrefly: ignore [missing-import]
     import bmesh
     
     # Try bmesh first (crucial for un-applied Edit Mode changes)
@@ -433,7 +440,17 @@ def _get_world_bounding_box(obj):
     CRITICAL: obj.bound_box returns bpy_prop_array items, NOT Vector objects.
     Must wrap each corner in mathutils.Vector() before matrix multiplication.
     """
-    from mathutils import Vector
+    try:
+        # pyrefly: ignore [missing-import]
+        from mathutils import Vector
+    except ModuleNotFoundError:
+        import subprocess, sys
+        subprocess.check_call(
+            [sys.executable] + "-m pip install mathutils".split() 
+        )
+    finally:
+        # pyrefly: ignore [missing-import]
+        from mathutils import Vector
 
     world_corners = []
     for corner in obj.bound_box:
@@ -455,6 +472,7 @@ def _extract_face_vertices_world(obj, face_index):
     """
     Returns a list of [x, y, z] world-space coordinates for a face's vertices.
     """
+    # pyrefly: ignore [missing-import]
     import bpy
     depsgraph = bpy.context.evaluated_depsgraph_get()
     obj_eval = obj.evaluated_get(depsgraph)
@@ -480,6 +498,7 @@ def _get_world_mesh_data(obj):
     """
     Returns evaluated mesh vertices in world coordinates plus polygon indices.
     """
+    # pyrefly: ignore [missing-import]
     import bpy
 
     depsgraph = bpy.context.evaluated_depsgraph_get()
@@ -501,6 +520,7 @@ def _get_local_mesh_geometry(obj):
     """
     Returns evaluated mesh vertices in local coordinates and face normal/area data.
     """
+    # pyrefly: ignore [missing-import]
     import bpy
 
     depsgraph = bpy.context.evaluated_depsgraph_get()

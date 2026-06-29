@@ -5,6 +5,7 @@ Listens to Blender depsgraph updates and automatically triggers mesh regeneratio
 when small parametric changes are made, providing real-time CFD mesh feedback.
 """
 
+# pyrefly: ignore [missing-import]
 import bpy
 import time
 
