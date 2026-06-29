@@ -269,6 +269,8 @@ def _build_extrude(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     face = cb.Face(face_pts)
     extrude = cb.Extrude(face, vector)
     _apply_chops(extrude, spec)
+    if "matrix_world" in spec:
+        extrude.transform(spec["matrix_world"])
     _apply_face_patches(extrude, spec)
     mesh.add(extrude)
 
@@ -289,6 +291,8 @@ def _build_revolve(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     face = cb.Face(face_pts)
     revolve = cb.Revolve(face, angle_rad, axis, origin)
     _apply_chops(revolve, spec)
+    if "matrix_world" in spec:
+        revolve.transform(spec["matrix_world"])
     _apply_face_patches(revolve, spec)
     mesh.add(revolve)
 
@@ -338,6 +342,8 @@ def _build_loft(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     top_face = cb.Face(top_pts)
     loft = cb.Loft(bottom_face, top_face)
     _apply_chops(loft, spec)
+    if "matrix_world" in spec:
+        loft.transform(spec["matrix_world"])
     _apply_face_patches(loft, spec)
     mesh.add(loft)
 
