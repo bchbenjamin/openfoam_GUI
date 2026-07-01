@@ -51,6 +51,15 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                 )
             layout.separator()
 
+        if context.mode == 'OBJECT':
+            add_box = layout.box()
+            add_box.label(text="Add Classy Primitives", icon='MESH_DATA')
+            row = add_box.row()
+            row.operator("classy.add_box", text="Box", icon='MESH_CUBE')
+            row.operator("classy.add_cylinder", text="Cylinder", icon='MESH_CYLINDER')
+            row.operator("classy.add_frustum", text="Frustum", icon='MESH_CONE')
+            layout.separator()
+
         layout.label(text="Case Settings")
         layout.prop(scene_props, "case_path")
 

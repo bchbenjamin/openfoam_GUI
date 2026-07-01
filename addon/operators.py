@@ -479,7 +479,7 @@ class CLASSY_OT_tag_extrude(bpy.types.Operator):
             active_face = selected_faces[0]
 
         if len(active_face.verts) != 4:
-            self.report({'ERROR'}, "Structured meshing requires exactly 4-sided quad faces.")
+            self.report({'ERROR'}, "If you want a circular 3D pipe, you do not draw a circle. You must use the built-in Cylinder primitive, which automatically generates the complex 12-block 'O-grid' required for round structured meshes.")
             return {'CANCELLED'}
             
         face_index = active_face.index
@@ -516,7 +516,7 @@ class CLASSY_OT_tag_revolve(bpy.types.Operator):
             active_face = selected_faces[0]
 
         if len(active_face.verts) != 4:
-            self.report({'ERROR'}, "Structured meshing requires exactly 4-sided quad faces.")
+            self.report({'ERROR'}, "If you want a circular 3D pipe, you do not draw a circle. You must use the built-in Cylinder primitive, which automatically generates the complex 12-block 'O-grid' required for round structured meshes.")
             return {'CANCELLED'}
             
         face_index = active_face.index
@@ -550,7 +550,7 @@ class CLASSY_OT_tag_loft(bpy.types.Operator):
             
         for face in selected_faces:
             if len(face.verts) != 4:
-                self.report({'ERROR'}, "Structured meshing requires exactly 4-sided quad faces.")
+                self.report({'ERROR'}, "If you want a circular 3D pipe, you do not draw a circle. You must use the built-in Cylinder primitive, which automatically generates the complex 12-block 'O-grid' required for round structured meshes.")
                 return {'CANCELLED'}
         
         face_index_1 = selected_faces[0].index
@@ -607,4 +607,40 @@ class CLASSY_OT_remove_boundary_patch(bpy.types.Operator):
         idx = props.active_face_patch_index
         props.face_patches.remove(idx)
         props.active_face_patch_index = max(0, idx - 1)
+        return {'FINISHED'}
+
+class CLASSY_OT_add_box(bpy.types.Operator):
+    """Add a Cube and tag it as a Classy Box"""
+    bl_idname = "classy.add_box"
+    bl_label = "Add Box Primitive"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        bpy.ops.mesh.primitive_cube_add()
+        if context.active_object:
+            context.active_object.classy_block_props.block_type = 'BOX'
+        return {'FINISHED'}
+
+class CLASSY_OT_add_cylinder(bpy.types.Operator):
+    """Add a Cylinder and tag it as a Classy Cylinder"""
+    bl_idname = "classy.add_cylinder"
+    bl_label = "Add Cylinder Primitive"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        bpy.ops.mesh.primitive_cylinder_add()
+        if context.active_object:
+            context.active_object.classy_block_props.block_type = 'CYLINDER'
+        return {'FINISHED'}
+
+class CLASSY_OT_add_frustum(bpy.types.Operator):
+    """Add a Cone/Frustum and tag it as a Classy Frustum"""
+    bl_idname = "classy.add_frustum"
+    bl_label = "Add Frustum Primitive"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        bpy.ops.mesh.primitive_cone_add(radius1=1.0, radius2=0.5)
+        if context.active_object:
+            context.active_object.classy_block_props.block_type = 'FRUSTUM'
         return {'FINISHED'}
