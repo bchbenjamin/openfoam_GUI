@@ -58,6 +58,10 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
             row.operator("classy.add_box", text="Box", icon='MESH_CUBE')
             row.operator("classy.add_cylinder", text="Cylinder", icon='MESH_CYLINDER')
             row.operator("classy.add_frustum", text="Frustum", icon='MESH_CONE')
+            
+            row2 = add_box.row()
+            row2.operator("classy.add_sketch_point", text="Draw Sketch", icon='GREASEPENCIL')
+            
             layout.separator()
 
         layout.label(text="Case Settings")

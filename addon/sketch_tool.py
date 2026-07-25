@@ -44,12 +44,14 @@ class CLASSY_OT_add_sketch_point(bpy.types.Operator):
 
     def _get_3d_location(self, context, event):
         """Raycast into the scene, fallback to Z=0 plane."""
-        region = context.region
-        rv3d = context.region_data
-        coord = (event.mouse_region_x, event.mouse_region_y)
+        # Convert raw window coordinates into region coordinates safely
+        coord = (
+            event.mouse_x - self._region.x,
+            event.mouse_y - self._region.y
+        )
 
-        view_vector = view3d_utils.region_2d_to_vector_3d(region, rv3d, coord)
-        ray_origin = view3d_utils.region_2d_to_origin_3d(region, rv3d, coord)
+        view_vector = view3d_utils.region_2d_to_vector_3d(self._region, self._rv3d, coord)
+        ray_origin = view3d_utils.region_2d_to_origin_3d(self._region, self._rv3d, coord)
 
         # 1. Raycast against scene geometry
         depsgraph = context.evaluated_depsgraph_get()
@@ -58,7 +60,7 @@ class CLASSY_OT_add_sketch_point(bpy.types.Operator):
         )
 
         if hit:
-            pt = location
+            pt = location.copy()
         else:
             # 2. Fallback to Z=0 plane
             plane_co = Vector((0.0, 0.0, 0.0))
@@ -151,6 +153,9 @@ class CLASSY_OT_add_sketch_point(bpy.types.Operator):
 
     def invoke(self, context, event):
         if context.area.type == 'VIEW_3D':
+            self._region = next((r for r in context.area.regions if r.type == 'WINDOW'), context.region)
+            self._rv3d = context.space_data.region_3d
+
             self._points = []
             self._current_3d = Vector((0, 0, 0))
             self._draw_handle = bpy.types.SpaceView3D.draw_handler_add(
