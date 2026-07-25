@@ -78,6 +78,31 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
 
         # --- Per-object settings (shown for active selection) ---
         obj = context.active_object
+        if obj and obj.type == 'CURVE' and obj.get("classy_sketch"):
+            layout.separator()
+            sketch_box = layout.box()
+            sketch_box.label(text="Sketch Actions", icon='CURVE_PATH')
+            
+            curve = obj.data
+            num_pts = 0
+            if curve.splines:
+                spline = curve.splines[0]
+                num_pts = len(spline.bezier_points) if spline.type == 'BEZIER' else len(spline.points)
+            
+            if num_pts == 4:
+                sketch_box.label(text="Valid 4-Point Profile", icon='CHECKMARK')
+            else:
+                warn_row = sketch_box.row()
+                warn_row.alert = True
+                warn_row.label(
+                    text=f"⚠ Invalid Profile: Sketch has {num_pts} points. Exactly 4 points required.",
+                    icon='ERROR'
+                )
+            
+            row = sketch_box.row()
+            row.operator("classy.extrude_sketch")
+            row.operator("classy.revolve_sketch")
+
         if obj and obj.type == 'MESH':
             layout.separator()
             

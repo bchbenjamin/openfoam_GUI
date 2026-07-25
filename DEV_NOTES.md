@@ -169,3 +169,9 @@ How it works now:
 
 **Valid face names for `project_side()`**:
 `'bottom', 'top', 'front', 'back', 'left', 'right'`
+
+### Goal 2: Explicit point/line sketch tool (Week 8)
+Integrated a 2D sketch-to-3D block workflow directly into the 3D viewport.
+- **`CLASSY_OT_add_sketch_point`**: Modal draw handler using `gpu` and `gpu_extras.batch` (compatible with Blender 3.4+ after `bgl` deprecation). Allows the user to click points in the viewport to build a poly spline.
+- **Geometry Validation**: `classy_blocks` currently fails silently or downstream if given an invalid 2D profile (e.g. self-intersecting or wrong number of points). We added explicit UI validation that warns the user if a sketch has `!= 4` points before extrusion.
+- **Extrude/Revolve Integration**: Instead of duplicating mesh generation logic, the Extrude and Revolve Sketch operators parse the curve into a spec dict (extracting the points from the curve data) and pipe it directly into `mesh_builder.py`.

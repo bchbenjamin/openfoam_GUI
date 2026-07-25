@@ -66,6 +66,14 @@ This project relies on a carefully orchestrated stack of Python libraries:
 * **`bpy` (Blender Python API)**: Powers the frontend interface. It is used to draw the custom UI panels within Blender, extract geometric data (vertices, bounding boxes, matrices) from user-created objects, and manage the scene state.
 * **`pyvista`**: Serves as a crucial validation and visualization layer. It is used in the pipeline to validate mesh integrity (e.g., checking for manifold topology and correct aspect ratios) before committing to OpenFOAM generation. It is also instrumental in loading the generated VTK files back into Blender for the user to inspect.
 
+## 2D Sketch to 3D Block Workflow
+
+A brand new workflow allows you to build 3D blocks by sketching 2D profiles directly in the 3D viewport:
+1. **Draw Sketch**: In the *Add Classy Primitives* panel, click "Draw Sketch".
+2. **Place Points**: Click in the 3D viewport to place points (snapping to existing geometry or the grid). 
+3. **Confirm**: Press `Enter` to confirm the sketch once you have placed exactly 4 points.
+4. **Extrude or Revolve**: With the sketch selected, navigate to the *Sketch Actions* panel and click either "Extrude Sketch" or "Revolve Sketch". The add-on will validate that your sketch has exactly 4 points and automatically pipe the data into the mesh generation pipeline without creating intermediate Blender mesh objects.
+
 ## Features & Interface
 
 The add-on integrates smoothly into the Blender sidebar, providing immediate feedback and tools tailored for OpenFOAM preparation.
