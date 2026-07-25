@@ -90,6 +90,7 @@ def _make_mock_object(name, bound_box, matrix_world, props_dict=None):
     else:
         obj.classy_block_props = None
 
+    obj.get.return_value = None
     return obj
 
 

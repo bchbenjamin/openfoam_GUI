@@ -12,6 +12,7 @@ from . import foam_directories
 from . import tutorial_manager
 from . import auto_update
 from . import dependencies
+from . import sketch_tool
 
 classes = [
     preferences.ClassyBlocksPreferences,
@@ -25,6 +26,7 @@ classes = [
     operators.CLASSY_OT_reload_mesh,
     operators.MESH_OT_export_terrain_stl,
     operators.CLASSY_OT_project_to_stl,
+    sketch_tool.CLASSY_OT_add_sketch_point,
     operators.CLASSY_OT_run_all,
     operators.CLASSY_OT_add_box,
     operators.CLASSY_OT_add_cylinder,
@@ -93,10 +95,10 @@ def unregister():
         bpy.app.handlers.load_post.remove(_on_load_post)
     dependencies.unregister_startup_checks()
     auto_update.unregister()
+    sketch_tool.unregister_handlers()
     del bpy.types.Scene.foam_dirs
     del bpy.types.Scene.tutorial_manager
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
     del bpy.types.Object.classy_block_props
     del bpy.types.Scene.classy_mesh_props
-

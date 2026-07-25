@@ -51,13 +51,19 @@ def extract_geometry(context):
     warnings = []
 
     for obj in context.scene.objects:
-        if obj.type != "MESH":
+        if obj.type not in {"MESH", "CURVE"}:
             continue
 
         props = getattr(obj, "classy_block_props", None)
 
-        if props and getattr(props, "exclude_from_mesh", False):
-            pass
+        if getattr(props, "exclude_from_mesh", False):
+            continue
+
+        # Fast path for sketch tool lines
+        if obj.get("classy_sketch"):
+            spec = _build_sketch_spec(obj, props)
+            if spec:
+                blocks.append(spec)
             continue
 
         block_type = getattr(props, "block_type", "BOX") if props else "BOX"
@@ -400,6 +406,39 @@ def _build_extrude_spec(obj, props):
         **_read_chain_params(props),
         "matrix_world": [list(row) for row in obj.matrix_world],
     }
+
+def _build_sketch_spec(obj, props):
+    """
+    Builds a spec dictionary for a sketched curve.
+    """
+    return {
+        "type": "sketch",
+        "name": obj.name,
+        "curve_type": obj.get("classy_curve_type", "POLY"),
+        "points": [list(pt) for pt in _extract_curve_points(obj)],
+        "matrix_world": [list(row) for row in obj.matrix_world],
+        "patch_name": _read_patch_name(props),
+        **_read_grading(props),
+        **_read_chain_params(props),
+    }
+
+def _extract_curve_points(obj):
+    import bpy
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    obj_eval = obj.evaluated_get(depsgraph)
+    curve = obj_eval.data
+    
+    pts = []
+    if not curve.splines:
+        return pts
+        
+    spline = curve.splines[0]
+    if spline.type == 'BEZIER':
+        pts = [list(p.co) for p in spline.bezier_points]
+    else:
+        pts = [list(p.co[:3]) for p in spline.points]
+        
+    return pts
 
 def _build_revolve_spec(obj, props):
     face_index = getattr(props, "revolve_face_index", 0)
