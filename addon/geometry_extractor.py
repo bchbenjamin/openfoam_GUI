@@ -97,8 +97,8 @@ def extract_geometry(context):
                     })
                 spec["face_patches"] = patches
 
-            # Inject STL projections
-            if spec["type"] != "unsupported" and props:
+            # Inject STL projections (only supported for base operations, not composite shapes)
+            if spec["type"] in ("box", "extrude", "revolve", "loft") and props:
                 stl_file = getattr(props, "stl_file", "") or ""
                 stl_basename = os.path.basename(stl_file.strip())
                 if stl_basename and stl_basename.lower().endswith(".stl"):

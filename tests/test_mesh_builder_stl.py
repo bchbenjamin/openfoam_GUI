@@ -77,6 +77,106 @@ def test_build_cylinder():
     _mb.build_block(mesh, spec)
 
 
+def test_build_extrude_with_stl_projection():
+    """An extrude block with STL projection registers geometry and projects."""
+    mesh = cb.Mesh()
+    spec = {
+        "type": "extrude",
+        "name": "test_extrude",
+        "face": [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]],
+        "extrude_vector": [0, 0, 1],
+        "cells": [5, 5, 10],
+        "grading_type": "RATIO",
+        "grading": [1.0, 1.0, 1.0],
+        "stl_projections": {"top": "terrain.stl"},
+    }
+    _mb.build_block(mesh, spec)
+
+
+def test_build_cylinder_with_stl_projection():
+    """A cylinder block with STL projection registers geometry and projects."""
+    mesh = cb.Mesh()
+    spec = {
+        "type": "cylinder",
+        "name": "test_cylinder",
+        "axis_pt1": [0, 0, 0],
+        "axis_pt2": [0, 0, 2],
+        "radius_point": [1, 0, 0],
+        "radius": 1.0,
+        "cells": [5, 5, 10],
+        "grading_type": "RATIO",
+        "grading": [1.0, 1.0, 1.0],
+        "stl_projections": {"top": "terrain.stl"},
+    }
+    _mb.build_block(mesh, spec)
+
+
+def test_build_revolve_with_stl_projection():
+    mesh = cb.Mesh()
+    spec = {
+        "type": "revolve",
+        "name": "test_revolve",
+        "face": [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]],
+        "angle_deg": 90,
+        "axis": [0, 1, 0],
+        "origin": [0, 0, 0],
+        "cells": [5, 5, 10],
+        "grading_type": "RATIO",
+        "grading": [1.0, 1.0, 1.0],
+        "stl_projections": {"top": "terrain.stl"},
+    }
+    _mb.build_block(mesh, spec)
+
+
+def test_build_frustum_with_stl_projection():
+    mesh = cb.Mesh()
+    spec = {
+        "type": "frustum",
+        "name": "test_frustum",
+        "axis_pt1": [0, 0, 0],
+        "axis_pt2": [0, 0, 2],
+        "radius_point_1": [1, 0, 0],
+        "radius_2": 0.5,
+        "cells": [5, 5, 10],
+        "grading_type": "RATIO",
+        "grading": [1.0, 1.0, 1.0],
+        "stl_projections": {"top": "terrain.stl"},
+    }
+    _mb.build_block(mesh, spec)
+
+
+def test_build_loft_with_stl_projection():
+    mesh = cb.Mesh()
+    spec = {
+        "type": "loft",
+        "name": "test_loft",
+        "bottom_face": [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]],
+        "top_face": [[0, 0, 2], [1, 0, 2], [1, 1, 2], [0, 1, 2]],
+        "cells": [5, 5, 10],
+        "grading_type": "RATIO",
+        "grading": [1.0, 1.0, 1.0],
+        "stl_projections": {"top": "terrain.stl"},
+    }
+    _mb.build_block(mesh, spec)
+
+
+def test_build_wedge_with_stl_projection():
+    mesh = cb.Mesh()
+    spec = {
+        "type": "wedge",
+        "name": "test_wedge",
+        "face": [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]],
+        "angle_deg": 5,
+        "axis": [0, 1, 0],
+        "origin": [0, 0, 0],
+        "cells": [5, 5, 10],
+        "grading_type": "RATIO",
+        "grading": [1.0, 1.0, 1.0],
+        "stl_projections": {"right": "terrain.stl"},
+    }
+    _mb.build_block(mesh, spec)
+
+
 def test_build_sphere():
     """A sphere block builds correctly from two hemispheres."""
     mesh = cb.Mesh()

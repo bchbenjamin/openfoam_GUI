@@ -147,6 +147,9 @@ def _apply_stl_projections(shape, mesh_obj, spec):
         mesh_obj: The cb.Mesh object (needed for geometry registration).
         spec: Block specification dict.
     """
+    if not hasattr(shape, "project_side"):
+        return
+
     for face_name, terrain_stl in spec.get("stl_projections", {}).items():
         if not terrain_stl or not terrain_stl.strip():
             continue
@@ -390,16 +393,18 @@ def _build_wedge(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     face_pts = spec["face"]
     angle_deg = spec.get("angle_deg", 2.0)
     angle_rad = math.radians(angle_deg)
-    pass
 
     face = cb.Face(face_pts)
-    axis = spec.get("axis", [1, 0, 0])
-    origin = spec.get("origin", [0, 0, 0])
-    wedge = cb.Wedge(face, angle_rad, axis, origin)
+    # Wedge in classy_blocks revolves around x-axis.
+    wedge = cb.Wedge(face, angle_rad)
+    
     _apply_chops(wedge, spec)
     if "matrix_world" in spec:
         wedge.transform(spec["matrix_world"])
-    _apply_stl_projections(wedge, mesh, spec)
+        
+    if hasattr(wedge, "project_side"):
+        _apply_stl_projections(wedge, mesh, spec)
+        
     _apply_face_patches(wedge, spec)
     mesh.add(wedge)
 

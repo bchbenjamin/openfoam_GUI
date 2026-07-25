@@ -16,7 +16,7 @@ FoamFile
 
 1
 (
-Cube
+Cylinder.001
 {
 cellLabels      List<label> 
 1000
