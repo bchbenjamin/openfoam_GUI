@@ -402,6 +402,69 @@ class MESH_OT_export_terrain_stl(bpy.types.Operator):
             return {'CANCELLED'}
 
 
+class CLASSY_OT_project_to_stl(bpy.types.Operator):
+    """Validate the selected STL file for projection"""
+    bl_idname = "classy.project_to_stl"
+    bl_label = "Validate STL Projection"
+
+    def execute(self, context):
+        set_status(context, "Validating STL...")
+        obj = context.active_object
+        if not obj or obj.type != 'MESH':
+            self.report({'ERROR'}, "No active mesh object")
+            set_status(context, "Failed: No active mesh object")
+            return {'CANCELLED'}
+
+        props = obj.classy_block_props
+        stl_path = props.stl_file
+
+        # Path validation guard
+        if not stl_path:
+            def draw_error(self, context):
+                self.layout.label(text="STL File is not set!", icon='ERROR')
+            context.window_manager.popup_menu(draw_error, title="No STL File", icon='ERROR')
+            self.report({'ERROR'}, "STL File is not set")
+            set_status(context, "Failed: STL File not set")
+            return {'CANCELLED'}
+
+        stl_path = bpy.path.abspath(stl_path)
+
+        if not os.path.isfile(stl_path):
+            def draw_not_found(self, context):
+                self.layout.label(text=f"STL file not found at '{stl_path}'", icon='ERROR')
+            context.window_manager.popup_menu(draw_not_found, title="STL Not Found", icon='ERROR')
+            self.report({'ERROR'}, f"STL validation failed: file not found at '{stl_path}'")
+            set_status(context, "Failed: STL file not found")
+            return {'CANCELLED'}
+
+        try:
+            from . import stl_projector
+            result = stl_projector.validate_stl(stl_path)
+
+            if not result["valid"]:
+                self.report({'ERROR'}, f"STL validation failed: {result['error']}")
+                set_status(context, "Failed: STL invalid")
+                return {'CANCELLED'}
+
+            for warning in result.get("warnings", []):
+                self.report({'WARNING'}, warning)
+
+            info_msg = f"STL Valid ({result['n_triangles']} triangles, manifold={result['is_manifold']})"
+            self.report({'INFO'}, info_msg)
+            set_status(context, "Success: STL valid")
+            return {'FINISHED'}
+
+        except FileNotFoundError as e:
+            self.report({'ERROR'}, str(e))
+            set_status(context, "Failed: FileNotFoundError")
+            return {'CANCELLED'}
+        except Exception as e:
+            self.report({'ERROR'},
+                        f"STL validation execution failed: {str(e)}")
+            set_status(context, "Failed: STL validation exception")
+            return {'CANCELLED'}
+
+
 class CLASSY_OT_run_all(bpy.types.Operator):
     """Run the full pipeline: Generate → blockMesh → VTK → Reload"""
     bl_idname = "classy.run_all"

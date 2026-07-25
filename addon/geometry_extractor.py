@@ -97,6 +97,14 @@ def extract_geometry(context):
                     })
                 spec["face_patches"] = patches
 
+            # Inject STL projections
+            if spec["type"] != "unsupported" and props:
+                stl_file = getattr(props, "stl_file", "") or ""
+                stl_basename = os.path.basename(stl_file.strip())
+                if stl_basename and stl_basename.lower().endswith(".stl"):
+                    face_name = getattr(props, "stl_projection_face", "top")
+                    spec["stl_projections"] = { face_name: stl_basename }
+
             blocks.append(spec)
             if spec["type"] == "unsupported":
                 warnings.append(spec.get("warning", "Unsupported shape"))
@@ -165,13 +173,6 @@ def _build_box_spec(obj, props):
         **_read_chain_params(props),
         "matrix_world": [list(row) for row in obj.matrix_world],
     }
-    
-    if props:
-        stl_file = getattr(props, "stl_file", "") or ""
-        stl_basename = os.path.basename(stl_file.strip())
-        if stl_basename and stl_basename.lower().endswith(".stl"):
-            face_name = getattr(props, "stl_projection_face", "top")
-            spec["stl_projections"] = { face_name: stl_basename }
             
     return spec
 

@@ -24,6 +24,7 @@ classes = [
     operators.CLASSY_OT_convert_vtk,
     operators.CLASSY_OT_reload_mesh,
     operators.MESH_OT_export_terrain_stl,
+    operators.CLASSY_OT_project_to_stl,
     operators.CLASSY_OT_run_all,
     operators.CLASSY_OT_add_box,
     operators.CLASSY_OT_add_cylinder,

@@ -126,6 +126,34 @@ def _apply_face_patches(shape, spec):
                 pass
 
 
+def _apply_stl_projections(shape, mesh_obj, spec):
+    """
+    Apply STL face projections to a shape using classy_blocks' native
+    project_side() + add_geometry() mechanism.
+
+    NATIVE VS FALLBACK:
+        This uses OpenFOAM's searchableSurface (triSurfaceMesh) for projection,
+        which is the preferred approach because blockMesh projects ALL mesh
+        points on the face — not just control vertices. This respects mesh
+        grading and curvature interpolation, producing much better terrain
+        conformance than the Python-side pre-warping fallback in
+        stl_projector.py.
+
+    The 'stl_projections' key in the spec dict maps face names to STL
+    filenames: {"top": "terrain.stl", "bottom": "ground.stl"}.
+
+    Args:
+        shape: The classy_blocks shape object (Box, Cylinder, Extrude, etc.).
+        mesh_obj: The cb.Mesh object (needed for geometry registration).
+        spec: Block specification dict.
+    """
+    for face_name, terrain_stl in spec.get("stl_projections", {}).items():
+        if not terrain_stl or not terrain_stl.strip():
+            continue
+        _register_geometry(mesh_obj, terrain_stl)
+        shape.project_side(face_name, terrain_stl)
+
+
 def _register_geometry(mesh: cb.Mesh, stl_name: str) -> None:
     """
     Registers an STL geometry in the mesh's geometry section.
@@ -158,13 +186,8 @@ def _build_box(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     if "matrix_world" in spec:
         box.transform(spec["matrix_world"])
     
-    # User-specified single-face terrain projection
-    for face_name, terrain_stl in spec.get("stl_projections", {}).items():
-        if not terrain_stl or not terrain_stl.strip():
-            continue
-        _register_geometry(mesh, terrain_stl)
-        box.project_side(face_name, terrain_stl)
-        pass
+    # STL face projection (native OpenFOAM searchableSurface mechanism)
+    _apply_stl_projections(box, mesh, spec)
     
     _apply_face_patches(box, spec)
     mesh.add(box)
@@ -192,6 +215,7 @@ def _build_cylinder(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     _apply_round_chops(cyl, spec)
     if "matrix_world" in spec:
         cyl.transform(spec["matrix_world"])
+    _apply_stl_projections(cyl, mesh, spec)
     _apply_face_patches(cyl, spec)
     mesh.add(cyl)
     return cyl
@@ -271,6 +295,7 @@ def _build_extrude(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     _apply_chops(extrude, spec)
     if "matrix_world" in spec:
         extrude.transform(spec["matrix_world"])
+    _apply_stl_projections(extrude, mesh, spec)
     _apply_face_patches(extrude, spec)
     mesh.add(extrude)
 
@@ -293,6 +318,7 @@ def _build_revolve(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     _apply_chops(revolve, spec)
     if "matrix_world" in spec:
         revolve.transform(spec["matrix_world"])
+    _apply_stl_projections(revolve, mesh, spec)
     _apply_face_patches(revolve, spec)
     mesh.add(revolve)
 
@@ -321,6 +347,7 @@ def _build_frustum(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     _apply_round_chops(frustum, spec)
     if "matrix_world" in spec:
         frustum.transform(spec["matrix_world"])
+    _apply_stl_projections(frustum, mesh, spec)
     _apply_face_patches(frustum, spec)
     mesh.add(frustum)
     return frustum
@@ -344,6 +371,7 @@ def _build_loft(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     _apply_chops(loft, spec)
     if "matrix_world" in spec:
         loft.transform(spec["matrix_world"])
+    _apply_stl_projections(loft, mesh, spec)
     _apply_face_patches(loft, spec)
     mesh.add(loft)
 
@@ -371,6 +399,7 @@ def _build_wedge(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     _apply_chops(wedge, spec)
     if "matrix_world" in spec:
         wedge.transform(spec["matrix_world"])
+    _apply_stl_projections(wedge, mesh, spec)
     _apply_face_patches(wedge, spec)
     mesh.add(wedge)
 

@@ -63,6 +63,13 @@ classy_blender_mesh/
 |---|---|---|
 | `vtk_importer.py` | Reads VTK → creates Blender mesh objects, face parsing, cleanup | ✅ Unit tests (mocked bpy) |
 
+### Fully Implemented (NEW — STL Projection)
+| Module | Purpose | Standalone testable? |
+|---|---|---|
+| `stl_projector.py` | Validates STL files (manifold/triangles) for projection | ✅ Unit tests (mocked bpy) |
+
+**Architecture Note (STL Projection):** We opted to use the native OpenFOAM `searchableSurface` mechanism (`mesh.add_geometry` + `shape.project_side`) rather than Python-side ray-casting/pre-warping. The native approach allows `blockMesh` to project all mesh nodes along the face, preserving grading and mesh topology much better than merely moving the control vertices of a block. The `stl_projector.py` module is primarily used for UI validation and early error detection before running OpenFOAM.
+
 ---
 
 ## Operator Wiring (Week 1)

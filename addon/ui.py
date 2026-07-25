@@ -114,15 +114,7 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                 header_box.prop(props, "patch_name")
                 header_box.prop(props, "block_type")
 
-                # --- Block-type specific parameters ---
-                if props.block_type == "BOX":
-                    # STL projection (terrain) — only for BOX type
-                    stl_box = layout.box()
-                    stl_box.label(text="STL Face Projection (optional — terrain only)")
-                    stl_box.prop(props, "stl_projection_face")
-                    stl_box.prop(props, "stl_file")
-
-                elif props.block_type == "EXTRUDED_RING":
+                if props.block_type == "EXTRUDED_RING":
                     ring_box = layout.box()
                     ring_box.label(text="Extruded Ring Parameters")
                     # (To be added: inner radius property in properties.py if needed, 
@@ -169,6 +161,16 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                     if props.chain_source:
                         chain_box.prop(props, "chain_length")
                         chain_box.prop(props, "chain_radius_2")
+
+                # --- STL Projection (Terrain) ---
+                layout.separator()
+                stl_box = layout.box()
+                stl_box.label(text="STL Face Projection (Terrain Mapping)", icon='MOD_SHRINKWRAP')
+                stl_box.prop(props, "stl_projection_face")
+                stl_box.prop(props, "stl_projection_direction")
+                stl_box.prop(props, "stl_file")
+                if props.stl_file:
+                    stl_box.operator("classy.project_to_stl", text="Validate STL", icon='CHECKMARK')
 
                 # --- Boundary Conditions ---
                 layout.separator()
