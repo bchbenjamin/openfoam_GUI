@@ -31,6 +31,8 @@ classes = [
     operators.CLASSY_OT_add_box,
     operators.CLASSY_OT_add_cylinder,
     operators.CLASSY_OT_add_frustum,
+    operators.CLASSY_OT_extrude_sketch,
+    operators.CLASSY_OT_revolve_sketch,
     operators.CLASSY_OT_tag_extrude,
     operators.CLASSY_OT_tag_revolve,
     operators.CLASSY_OT_tag_loft,

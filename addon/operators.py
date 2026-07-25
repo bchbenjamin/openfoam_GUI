@@ -517,6 +517,60 @@ class CLASSY_OT_run_all(bpy.types.Operator):
             _auto_update.is_auto_updating = False
             context.window.cursor_set('DEFAULT')
 
+class CLASSY_OT_extrude_sketch(bpy.types.Operator):
+    """Extrude a 4-point sketch into a 3D block"""
+    bl_idname = "classy.extrude_sketch"
+    bl_label = "Extrude Sketch"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.active_object
+        return obj and obj.type == 'CURVE' and obj.get("classy_sketch")
+
+    def execute(self, context):
+        obj = context.active_object
+        curve = obj.data
+        if not curve.splines:
+            self.report({'WARNING'}, "Sketch is empty.")
+        else:
+            spline = curve.splines[0]
+            num_pts = len(spline.bezier_points) if spline.type == 'BEZIER' else len(spline.points)
+            if num_pts != 4:
+                self.report({'WARNING'}, f"Sketch has {num_pts} points. Extrude requires exactly 4 points.")
+            else:
+                self.report({'INFO'}, "Sketch tagged for Extrusion")
+                
+        obj.classy_block_props.block_type = 'EXTRUDE'
+        return {'FINISHED'}
+
+class CLASSY_OT_revolve_sketch(bpy.types.Operator):
+    """Revolve a 4-point sketch into a 3D block"""
+    bl_idname = "classy.revolve_sketch"
+    bl_label = "Revolve Sketch"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.active_object
+        return obj and obj.type == 'CURVE' and obj.get("classy_sketch")
+
+    def execute(self, context):
+        obj = context.active_object
+        curve = obj.data
+        if not curve.splines:
+            self.report({'WARNING'}, "Sketch is empty.")
+        else:
+            spline = curve.splines[0]
+            num_pts = len(spline.bezier_points) if spline.type == 'BEZIER' else len(spline.points)
+            if num_pts != 4:
+                self.report({'WARNING'}, f"Sketch has {num_pts} points. Revolve requires exactly 4 points.")
+            else:
+                self.report({'INFO'}, "Sketch tagged for Revolution")
+                
+        obj.classy_block_props.block_type = 'REVOLVE'
+        return {'FINISHED'}
+
 class CLASSY_OT_tag_extrude(bpy.types.Operator):
     """Tag the active quad face for extrusion"""
     bl_idname = "classy.tag_extrude"

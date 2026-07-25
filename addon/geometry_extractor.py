@@ -381,14 +381,20 @@ def _extract_face_vertices_local_bmesh(obj, face_index):
     return verts_local
 
 def _build_extrude_spec(obj, props):
-    face_index = getattr(props, "extrude_face_index", 0)
     axis = getattr(props, "extrude_axis", "Z")
     dist = getattr(props, "extrude_distance", 1.0)
     
-    try:
-        face_pts = _extract_face_vertices_local_bmesh(obj, face_index)
-    except Exception as e:
-        return _make_unsupported_spec(obj, props, f"invalid-extrude-face: {e}")
+    if obj.type == 'CURVE' and obj.get("classy_sketch"):
+        pts = _extract_curve_points(obj)
+        if len(pts) != 4:
+            return _make_unsupported_spec(obj, props, "invalid-extrude-face: sketch must have exactly 4 points")
+        face_pts = pts
+    else:
+        face_index = getattr(props, "extrude_face_index", 0)
+        try:
+            face_pts = _extract_face_vertices_local_bmesh(obj, face_index)
+        except Exception as e:
+            return _make_unsupported_spec(obj, props, f"invalid-extrude-face: {e}")
         
     vec = [0.0, 0.0, 0.0]
     if axis == "X": vec[0] = dist
@@ -441,15 +447,21 @@ def _extract_curve_points(obj):
     return pts
 
 def _build_revolve_spec(obj, props):
-    face_index = getattr(props, "revolve_face_index", 0)
     angle_deg = getattr(props, "revolve_angle", 90.0)
     axis_str = getattr(props, "revolve_axis", "Z")
     origin = getattr(props, "revolve_origin", (0,0,0))
     
-    try:
-        face_pts = _extract_face_vertices_local_bmesh(obj, face_index)
-    except Exception as e:
-        return _make_unsupported_spec(obj, props, f"invalid-revolve-face: {e}")
+    if obj.type == 'CURVE' and obj.get("classy_sketch"):
+        pts = _extract_curve_points(obj)
+        if len(pts) != 4:
+            return _make_unsupported_spec(obj, props, "invalid-revolve-face: sketch must have exactly 4 points")
+        face_pts = pts
+    else:
+        face_index = getattr(props, "revolve_face_index", 0)
+        try:
+            face_pts = _extract_face_vertices_local_bmesh(obj, face_index)
+        except Exception as e:
+            return _make_unsupported_spec(obj, props, f"invalid-revolve-face: {e}")
         
     axis = [0.0, 0.0, 0.0]
     if axis_str == "X": axis[0] = 1.0
