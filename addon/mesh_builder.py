@@ -458,13 +458,9 @@ def build_block(mesh: cb.Mesh, spec: Dict[str, Any]) -> bool:
             f"Unknown block type '{block_type}' for block '{spec.get('name')}'"
         )
 
-    try:
-        result = builder(mesh, spec)
-        # unsupported returns None without adding anything
-        return block_type != "unsupported"
-    except Exception as e:
-        print(f"Warning: Failed to build block '{spec.get('name')}' ({block_type}): {e}")
-        return False
+    result = builder(mesh, spec)
+    # unsupported returns None without adding anything
+    return block_type != "unsupported"
 
 
 # ─────────────────────── SHAPE CHAINING ───────────────────────
