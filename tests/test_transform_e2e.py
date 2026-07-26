@@ -14,8 +14,8 @@ sys.modules['gpu_extras'] = MagicMock()
 sys.modules['gpu_extras.batch'] = MagicMock()
 
 import classy_blocks as cb
-from addon.geometry_extractor import _build_box_spec
-from addon.mesh_builder import _build_box
+from addon.geometry_extractor import _build_box_spec, _build_cylinder_spec
+from addon.mesh_builder import _build_box, _build_cylinder
 
 def _make_box_object(name, translate_list, rotate_axis_list, rotate_angle, scale_list):
     """Creates a mock blender object with a mocked matrix_world.decompose()"""
@@ -136,3 +136,65 @@ def test_box_non_uniform_scale_applied_to_mesh():
     assert max(ys) == pytest.approx(3.0)
     assert min(zs) == pytest.approx(-0.5)
     assert max(zs) == pytest.approx(0.5)
+
+def test_cylinder_translation_and_rotation_applied_to_mesh():
+    """
+    Ensures a cylinder with translation and rotation correctly outputs
+    transformed coordinates via the pipeline.
+    """
+    obj, props = _make_box_object(
+        "TestCylinder", 
+        translate_list=[5.0, 0.0, 0.0], 
+        rotate_axis_list=[0.0, 0.0, 1.0], 
+        rotate_angle=math.pi/2, # 90 deg around Z
+        scale_list=[1.0, 1.0, 1.0]
+    )
+    props.block_type = "CYLINDER"
+    
+    spec = _build_cylinder_spec(obj, props)
+    assert "transform" in spec
+    assert spec["transform"]["translate"][0] == pytest.approx(5.0)
+    
+    mesh = cb.Mesh()
+    _build_cylinder(mesh, spec)
+    
+    assert len(mesh.operations) == 12
+    
+    xs, ys = [], []
+    for op in mesh.operations:
+        pts = op.point_array
+        xs.extend([p[0] for p in pts])
+        ys.extend([p[1] for p in pts])
+    
+    # Original radius was 1, z bounds [-1, 1].
+    # Rotated 90deg around Z doesn't change Z, and radius point rotates.
+    # Translated +5 in X -> X bounds should be [4, 6] and Y bounds [-1, 1].
+    assert min(xs) == pytest.approx(4.0)
+    assert max(xs) == pytest.approx(6.0)
+    assert min(ys) == pytest.approx(-1.0)
+    assert max(ys) == pytest.approx(1.0)
+
+def test_box_with_stl_projection_translation_and_rotation_applied():
+    """
+    Ensures an STL projected box doesn't break when transforms are applied.
+    """
+    obj, props = _make_box_object(
+        "ProjectedBox", 
+        translate_list=[5.0, 0.0, 0.0], 
+        rotate_axis_list=[0.0, 0.0, 1.0], 
+        rotate_angle=math.pi/2, # 90 deg around Z
+        scale_list=[1.0, 1.0, 1.0]
+    )
+    
+    spec = _build_box_spec(obj, props)
+    # Inject STL projection spec manually as geometry_extractor would do when stl_file is present
+    spec["stl_projections"] = {"top": "terrain.stl"}
+    
+    mesh = cb.Mesh()
+    _build_box(mesh, spec)
+    
+    assert len(mesh.operations) == 1
+    box = mesh.operations[0]
+    
+    center = box.center
+    assert center[0] == pytest.approx(5.0)
