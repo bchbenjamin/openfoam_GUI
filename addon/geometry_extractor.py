@@ -46,6 +46,17 @@ import tempfile
 import numpy as np
 
 
+
+def _extract_transform(obj):
+    loc, rot, scale = obj.matrix_world.decompose()
+    axis, angle = rot.to_axis_angle()
+    return {
+        "translate": [loc.x, loc.y, loc.z],
+        "rotate_axis": [axis.x, axis.y, axis.z],
+        "rotate_angle": angle,
+        "scale": [scale.x, scale.y, scale.z]
+    }
+
 def extract_geometry(context):
     blocks = []
     warnings = []

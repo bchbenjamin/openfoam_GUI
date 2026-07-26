@@ -59,7 +59,18 @@ def test_sketch_fast_path():
     obj = MagicMock()
     obj.name = "TestSketch"
     obj.type = 'CURVE'
-    obj.matrix_world = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+    
+    mock_loc = MagicMock()
+    mock_loc.x, mock_loc.y, mock_loc.z = 0.0, 0.0, 0.0
+    mock_scale = MagicMock()
+    mock_scale.x, mock_scale.y, mock_scale.z = 1.0, 1.0, 1.0
+    mock_axis = MagicMock()
+    mock_axis.x, mock_axis.y, mock_axis.z = 0.0, 0.0, 1.0
+    mock_rot = MagicMock()
+    mock_rot.to_axis_angle.return_value = (mock_axis, 0.0)
+    mock_matrix = MagicMock()
+    mock_matrix.decompose.return_value = (mock_loc, mock_rot, mock_scale)
+    obj.matrix_world = mock_matrix
     
     # Tag it for the fast path
     def _mock_get(key, default=None):
@@ -125,7 +136,18 @@ def test_sketch_bezier_extraction():
     obj = MagicMock()
     obj.name = "BezierSketch"
     obj.type = 'CURVE'
-    obj.matrix_world = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+    
+    mock_loc = MagicMock()
+    mock_loc.x, mock_loc.y, mock_loc.z = 0.0, 0.0, 0.0
+    mock_scale = MagicMock()
+    mock_scale.x, mock_scale.y, mock_scale.z = 1.0, 1.0, 1.0
+    mock_axis = MagicMock()
+    mock_axis.x, mock_axis.y, mock_axis.z = 0.0, 0.0, 1.0
+    mock_rot = MagicMock()
+    mock_rot.to_axis_angle.return_value = (mock_axis, 0.0)
+    mock_matrix = MagicMock()
+    mock_matrix.decompose.return_value = (mock_loc, mock_rot, mock_scale)
+    obj.matrix_world = mock_matrix
     
     def _mock_get(key, default=None):
         if key == "classy_sketch":

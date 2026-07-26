@@ -113,7 +113,18 @@ def _make_sketch_object(num_pts=4):
     obj.classy_block_props = props
 
     # matrix_world (identity for simplicity)
-    obj.matrix_world = [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]
+    
+    mock_loc = MagicMock()
+    mock_loc.x, mock_loc.y, mock_loc.z = 0.0, 0.0, 0.0
+    mock_scale = MagicMock()
+    mock_scale.x, mock_scale.y, mock_scale.z = 1.0, 1.0, 1.0
+    mock_axis = MagicMock()
+    mock_axis.x, mock_axis.y, mock_axis.z = 0.0, 0.0, 1.0
+    mock_rot = MagicMock()
+    mock_rot.to_axis_angle.return_value = (mock_axis, 0.0)
+    mock_matrix = MagicMock()
+    mock_matrix.decompose.return_value = (mock_loc, mock_rot, mock_scale)
+    obj.matrix_world = mock_matrix
     obj.name = "ClassySketch"
 
     return obj
