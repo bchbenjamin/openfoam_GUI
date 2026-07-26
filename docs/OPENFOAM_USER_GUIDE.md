@@ -6,7 +6,7 @@ The add-on produces a single `system/blockMeshDict` via the `classy_blocks` Pyth
 ---
 ## Block Types and Their `blockMeshDict` Equivalents
 ### Box
-Maps to a single `hex` block spanning `p_min → p_max` in axis-aligned local space. The object's `matrix_world` is passed to `classy_blocks` via `.transform()`, so rotations and translations work correctly. Scale, however, should be applied (`Ctrl+A`) before export to avoid unexpected results from non-unit scaling.
+Maps to a single `hex` block spanning `p_min → p_max` in axis-aligned local space. The object's `matrix_world` is passed to `classy_blocks` via translation, rotation, and scaling operations, so all transformations (including non-uniform scaling) work correctly and reliably without needing to apply them in Blender.
 The generated blockMeshDict section is a standard 8-vertex hex with the cell count and grading you specified.
 ### Cylinder
 Maps to a 12-block O-grid cross-section — the standard structured cylinder topology. **You do not draw a circle in Blender and tag it as a cylinder.** You add a primitive cylinder mesh via the panel button; the extractor reads its axis endpoints and radius from the local bounding box. `classy_blocks`'s `cb.Cylinder` then generates the O-grid automatically.

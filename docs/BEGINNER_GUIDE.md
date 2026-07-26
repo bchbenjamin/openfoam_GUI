@@ -25,7 +25,7 @@ The simplest way to add a block is to use the **Add Classy Primitives** panel at
 2. A cube appears in the viewport, already tagged as a **BOX** block.
 3. Move, scale, and rotate it to position your domain.
 **✓ Checkpoint:** With the cube selected, the sidebar shows "Block Type: BOX" in the per-object section.
-> **Why apply scale?** If you scale an object in Blender and don't apply the scale (`Ctrl+A → Scale`), the object's local dimensions don't match what Blender reports. The add-on warns you with a yellow "⚠ Unapplied Scale" message. For boxes, it's okay — the add-on uses the world bounding box. For cylinders and frustums, always apply scale first.
+> **What about scale?** If you scale an object in Blender, you **do not** need to apply the scale (`Ctrl+A → Scale`). The add-on natively supports non-uniform scaling on all block types and automatically passes it to the OpenFOAM mesh generator, so you can resize and squash your primitives in object mode freely.
 ### Add a Cylinder
 1. Click **Cylinder** in the primitives row.
 2. A cylinder mesh appears, tagged as **CYLINDER**.
