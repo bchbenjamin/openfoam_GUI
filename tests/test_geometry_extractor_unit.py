@@ -44,17 +44,26 @@ class _MockVector:
         return _MockVector([v / length for v in self._data])
 
 
+class _MockQuaternion:
+    def to_axis_angle(self):
+        return _MockVector([0, 0, 1]), 0.0
+
 class _MockMatrix:
-    def __init__(self, translation=(0, 0, 0)):
-        self._tx, self._ty, self._tz = translation
+    """Mock translation matrix."""
+    def __init__(self, offset):
+        self.offset = offset
+        
+    def decompose(self):
+        return (_MockVector(self.offset), _MockQuaternion(), _MockVector([1, 1, 1]))
 
     def __matmul__(self, other):
         if isinstance(other, (list, tuple)):
             other = _MockVector(other)
+        # Translation only
         return _MockVector([
-            other[0] + self._tx,
-            other[1] + self._ty,
-            other[2] + self._tz,
+            other[0] + self.offset[0],
+            other[1] + self.offset[1],
+            other[2] + self.offset[2],
         ])
 
     def to_3x3(self):
@@ -134,28 +143,9 @@ _ge = _load_geometry_extractor()
 # to control auto-detection in unit tests
 # ──────────────────────────────────────────────────────────────────────
 
-def _extract_with_forced_detection(mock_ctx, volume_ratio=1.0):
-    """
-    Run extract_geometry with forced volume ratio.
-
-    volume_ratio=1.0 → box
-    volume_ratio=0.785 → cylinder
-    volume_ratio=0.524 → sphere
-    """
-    # Mock _compute_mesh_volume to return a specific ratio
-    def mock_volume(obj):
-        p_min, p_max = _ge._get_world_bounding_box(obj)
-        bb_dims = [p_max[i] - p_min[i] for i in range(3)]
-        bb_vol = bb_dims[0] * bb_dims[1] * bb_dims[2]
-        return bb_vol * volume_ratio
-
-    # Mock PyVista validation to always confirm
-    def mock_validate(obj, candidate):
-        return candidate
-
-    with patch.object(_ge, '_compute_mesh_volume', side_effect=mock_volume):
-        with patch.object(_ge, '_validate_with_pyvista', side_effect=mock_validate):
-            return _ge.extract_geometry(mock_ctx)
+def _extract_with_forced_detection(context, volume_ratio=1.0):
+    """Helper to run extraction."""
+    return _ge.extract_geometry(context)
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -177,15 +167,16 @@ def test_box_identity():
 
 
 def test_box_translated():
-    """Unit cube at (10,10,10) preserves offset."""
+    """Unit cube at (10,10,10) preserves offset in transform."""
     obj = _make_mock_object("Cube_Far", _UNIT_CUBE_BBOX, _MockMatrix((10, 10, 10)),
                              {"block_type": "BOX", "cells": [10, 10, 10]})
     mock_ctx = MagicMock()
     mock_ctx.scene.objects = [obj]
 
     result = _extract_with_forced_detection(mock_ctx, volume_ratio=1.0)
-    assert result["blocks"][0]["p_min"] == [9, 9, 9]
-    assert result["blocks"][0]["p_max"] == [11, 11, 11]
+    assert result["blocks"][0]["p_min"] == [-1, -1, -1]
+    assert result["blocks"][0]["transform"]["translate"] == [10, 10, 10]
+    assert result["blocks"][0]["p_max"] == [1, 1, 1]
 
 
 def test_box_with_stl_projection():
@@ -206,36 +197,39 @@ def test_box_with_stl_projection():
 # ──────────────────────────────────────────────────────────────────────
 
 def test_cylinder_detection():
-    """Object with volume ratio ≈ π/4 → auto-detected as cylinder."""
+    """Object with CYLINDER block type uses cylinder builder."""
     # Use a tall bounding box (cylinder aligned along Z)
     bbox = [
         (-1, -1, 0), (1, -1, 0), (1, 1, 0), (-1, 1, 0),
         (-1, -1, 3), (1, -1, 3), (1, 1, 3), (-1, 1, 3),
     ]
     obj = _make_mock_object("Cyl", bbox, _MockMatrix((0, 0, 0)),
-                             {"block_type": "BOX", "cells": [5, 5, 10]})
+                             {"block_type": "CYLINDER", "cells": [5, 5, 10]})
     mock_ctx = MagicMock()
     mock_ctx.scene.objects = [obj]
 
-    result = _extract_with_forced_detection(mock_ctx, volume_ratio=math.pi/4)
+    result = _extract_with_forced_detection(mock_ctx, volume_ratio=1.0)
     assert len(result["blocks"]) == 1
     assert result["blocks"][0]["type"] == "cylinder"
-    assert "axis_pt1" in result["blocks"][0]
-    assert "axis_pt2" in result["blocks"][0]
-    assert "radius_point" in result["blocks"][0]
+    
+    spec = result["blocks"][0]
+    assert spec["axis_pt1"] == [0, 0, 0]
+    assert spec["axis_pt2"] == [0, 0, 3]
+    assert round(spec["radius"], 6) == 1.0
+    assert round(spec["radius_point"][2], 6) == 0.0
 
 
 def test_sphere_detection():
-    """Object with volume ratio ≈ π/6 → auto-detected as sphere."""
+    """Object with SPHERE block type uses sphere builder."""
     obj = _make_mock_object("Sphere", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
-                             {"block_type": "BOX", "cells": [10, 10, 10]})
+                             {"block_type": "SPHERE", "cells": [10, 10, 10]})
     mock_ctx = MagicMock()
     mock_ctx.scene.objects = [obj]
 
-    result = _extract_with_forced_detection(mock_ctx, volume_ratio=math.pi/6)
+    result = _extract_with_forced_detection(mock_ctx, volume_ratio=1.0)
     assert len(result["blocks"]) == 1
     assert result["blocks"][0]["type"] == "sphere"
-    assert "center" in result["blocks"][0]
+    assert "center_point" in result["blocks"][0]
     assert "radius_point" in result["blocks"][0]
 
 
@@ -268,13 +262,11 @@ def test_infer_cylinder_axis_from_cap_normals():
 def test_unsupported_warning_is_reported():
     """Unsupported auto-detected meshes are kept in warnings and spec output."""
     obj = _make_mock_object("WeirdMesh", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
-                             {"block_type": "BOX", "cells": [10, 10, 10]})
+                             {"block_type": "UNKNOWN_TYPE", "cells": [10, 10, 10]})
     mock_ctx = MagicMock()
     mock_ctx.scene.objects = [obj]
 
-    with patch.object(_ge, '_compute_mesh_volume', return_value=0.2):
-        with patch.object(_ge, '_validate_with_pyvista', return_value="unsupported"):
-            result = _ge.extract_geometry(mock_ctx)
+    result = _ge.extract_geometry(mock_ctx)
 
     assert len(result["blocks"]) == 1
     assert result["blocks"][0]["type"] == "unsupported"
@@ -344,8 +336,9 @@ def test_block_type_dispatch_extrude():
     mock_ctx.scene.objects = [obj]
 
     result = _ge.extract_geometry(mock_ctx)
-    # Block should be skipped (extraction error caught — no real bpy.context)
-    assert len(result["blocks"]) == 0
+    # Block should emit an unsupported block since bmesh is mocked
+    assert len(result["blocks"]) == 1
+    assert result["blocks"][0]["type"] == "unsupported"
 
 
 def test_block_type_dispatch_revolve():
@@ -360,8 +353,9 @@ def test_block_type_dispatch_revolve():
     mock_ctx.scene.objects = [obj]
 
     result = _ge.extract_geometry(mock_ctx)
-    # Block should be skipped (extraction error caught)
-    assert len(result["blocks"]) == 0
+    # Block should emit an unsupported block since bmesh is mocked
+    assert len(result["blocks"]) == 1
+    assert result["blocks"][0]["type"] == "unsupported"
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -371,11 +365,11 @@ def test_block_type_dispatch_revolve():
 def test_sphere_spec_has_split_axis():
     """Sphere spec must include a split_axis field from matrix_world rotation."""
     obj = _make_mock_object("Sphere", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
-                             {"block_type": "BOX", "cells": [10, 10, 10]})
+                             {"block_type": "SPHERE", "cells": [10, 10, 10]})
     mock_ctx = MagicMock()
     mock_ctx.scene.objects = [obj]
 
-    result = _extract_with_forced_detection(mock_ctx, volume_ratio=math.pi/6)
+    result = _extract_with_forced_detection(mock_ctx, volume_ratio=1.0)
     assert len(result["blocks"]) == 1
     spec = result["blocks"][0]
     assert spec["type"] == "sphere"
@@ -386,32 +380,58 @@ def test_sphere_spec_has_split_axis():
     assert abs(spec["split_axis"][2] - 1.0) < 1e-6
 
 
-def test_unapplied_transform_warning():
-    """Objects with scale != (1,1,1) produce a warning in the result."""
-    obj = _make_mock_object("ScaledCube", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
+def test_non_uniform_scale_on_box_is_supported():
+    """Box supports non-uniform scale."""
+    obj = _make_mock_object("ScaledBox", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
                              {"block_type": "BOX", "cells": [10, 10, 10]})
-    # Simulate unapplied scale
-    obj.scale = (2.0, 2.0, 2.0)
-
+    obj.scale = (2.0, 3.0, 1.0)
     mock_ctx = MagicMock()
     mock_ctx.scene.objects = [obj]
-
     result = _extract_with_forced_detection(mock_ctx, volume_ratio=1.0)
-    # Should still extract the block
     assert len(result["blocks"]) == 1
     assert result["blocks"][0]["type"] == "box"
-    # Should have a transform warning
-    assert len(result["warnings"]) >= 1
-    assert "unapplied scale" in result["warnings"][0].lower()
+    assert len(result["warnings"]) == 0
 
+def test_non_uniform_scale_on_cylinder_is_unsupported():
+    """Cylinder does not support non-uniform scale and is skipped."""
+    obj = _make_mock_object("ScaledCylinder", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
+                             {"block_type": "CYLINDER", "cells": [10, 10, 10]})
+    obj.scale = (2.0, 3.0, 1.0)
+    mock_ctx = MagicMock()
+    mock_ctx.scene.objects = [obj]
+    result = _extract_with_forced_detection(mock_ctx, volume_ratio=1.0)
+    assert len(result["blocks"]) == 1
+    assert result["blocks"][0]["type"] == "unsupported"
+    assert len(result["warnings"]) == 1
+    assert "does not support non-uniform scaling" in result["warnings"][0]
 
-def test_check_unapplied_transforms_no_warning():
-    """Objects with scale == (1,1,1) produce no warning."""
-    obj = _make_mock_object("NormalCube", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
-                             {"block_type": "BOX", "cells": [10, 10, 10]})
-    result = _ge._check_unapplied_transforms(obj)
-    assert result is None
+def test_uniform_scale_is_supported():
+    """Uniform scale is fully supported on all shapes."""
+    obj = _make_mock_object("UniformCylinder", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
+                             {"block_type": "CYLINDER", "cells": [10, 10, 10]})
+    obj.scale = (2.0, 2.0, 2.0)
+    mock_ctx = MagicMock()
+    mock_ctx.scene.objects = [obj]
+    result = _extract_with_forced_detection(mock_ctx, volume_ratio=1.0)
+    assert len(result["blocks"]) == 1
+    assert result["blocks"][0]["type"] == "cylinder"
+    assert len(result["warnings"]) == 0
 
+def test_normalize_winding_corrects_inside_out():
+    """_normalize_winding should reverse face points if normal opposes sweep vector."""
+    # A simple square face in XY plane, points CCW if looking from +Z
+    # Normal is +Z
+    face_pts_ccw = [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]]
+    
+    # Sweep vector is -Z (opposes normal) -> should reverse
+    pts1 = list(face_pts_ccw)
+    _ge._normalize_winding(pts1, [0, 0, -1])
+    assert pts1 == [[0, 1, 0], [1, 1, 0], [1, 0, 0], [0, 0, 0]]
+    
+    # Sweep vector is +Z (aligns with normal) -> should NOT reverse
+    pts2 = list(face_pts_ccw)
+    _ge._normalize_winding(pts2, [0, 0, 1])
+    assert pts2 == face_pts_ccw
 
 if __name__ == "__main__":
     test_box_identity()
@@ -427,6 +447,7 @@ if __name__ == "__main__":
     test_block_type_dispatch_extrude()
     test_block_type_dispatch_revolve()
     test_sphere_spec_has_split_axis()
-    test_unapplied_transform_warning()
-    test_check_unapplied_transforms_no_warning()
+    test_non_uniform_scale_on_box_is_supported()
+    test_non_uniform_scale_on_cylinder_is_unsupported()
+    test_uniform_scale_is_supported()
     print("\nAll geometry extractor unit tests PASSED!")

@@ -90,10 +90,12 @@ def extract_geometry(context):
             continue
 
         block_type = getattr(props, "block_type", "BOX") if props else "BOX"
-        transform_warning = _check_applied_transforms(obj, block_type)
-        if transform_warning:
-            warnings.append(transform_warning)
-            pass
+        transform_error = _validate_transforms(obj, block_type)
+        if transform_error:
+            spec = _make_unsupported_spec(obj, props, transform_error)
+            blocks.append(spec)
+            warnings.append(spec.get("warning"))
+            continue
 
         try:
             if block_type == "BOX":
@@ -104,6 +106,8 @@ def extract_geometry(context):
                 spec = _build_frustum_spec(obj, props)
             elif block_type == "EXTRUDED_RING":
                 spec = _build_extruded_ring_spec(obj, props)
+            elif block_type == "SPHERE":
+                spec = _build_sphere_spec(obj, props)
             elif block_type == "WEDGE":
                 spec = _build_wedge_spec(obj, props)
             elif block_type == "EXTRUDE":
@@ -152,13 +156,17 @@ def extract_geometry(context):
         "warnings": warnings,
     }
 
-def _check_applied_transforms(obj, block_type):
+def _validate_transforms(obj, block_type):
     # pyrefly: ignore [import-outside-toplevel, missing-import]
     import bpy
     scale = obj.scale
-    if any(abs(s - 1.0) > 1e-4 for s in scale):
-        return (f"'{obj.name}' has unapplied scale. "
-                f"Apply scale (Ctrl+A) for predictable results.")
+    
+    is_non_uniform = False
+    if abs(scale[0] - scale[1]) > 1e-4 or abs(scale[1] - scale[2]) > 1e-4 or abs(scale[0] - scale[2]) > 1e-4:
+        is_non_uniform = True
+        
+    if is_non_uniform and block_type in ("CYLINDER", "FRUSTUM", "EXTRUDED_RING", "SPHERE", "WEDGE", "REVOLVE"):
+        return f"invalid-scale: '{block_type}' does not support non-uniform scaling (elliptical shapes). Please use uniform scale."
 
     depsgraph = bpy.context.evaluated_depsgraph_get()
     obj_eval = obj.evaluated_get(depsgraph)
@@ -175,7 +183,7 @@ def _check_applied_transforms(obj, block_type):
     
     if block_type in ("CYLINDER", "FRUSTUM", "EXTRUDED_RING"):
         if len(z_min_verts) < 3:
-            return (f"Transformed geometry detected on '{obj.name}'. "
+            return (f"invalid-rotation: Transformed geometry detected on '{obj.name}'. "
                     f"Please do not 'Apply Rotations' to primitive shapes, "
                     f"as it destroys the parametric block data.")
             
@@ -263,6 +271,29 @@ def _build_frustum_spec(obj, props):
         "axis_pt2": axis_pt2,
         "radius_point_1": radius_pt1,
         "radius_2": radius_2,
+        "cells": _read_cells(props),
+        "patch_name": _read_patch_name(props),
+        **_read_grading(props),
+        **_read_chain_params(props),
+        "transform": _extract_transform(obj),
+    }
+
+def _build_sphere_spec(obj, props):
+    local_corners = [c for c in obj.bound_box]
+    xs = [c[0] for c in local_corners]
+    ys = [c[1] for c in local_corners]
+    zs = [c[2] for c in local_corners]
+    
+    radius = (max(xs) - min(xs)) / 2.0
+    z_min, z_max = min(zs), max(zs)
+    center = [0, 0, (z_min + z_max) / 2.0]
+    
+    return {
+        "type": "sphere",
+        "name": obj.name,
+        "center_point": center,
+        "radius_point": [radius, 0, center[2]],
+        "split_axis": [0, 0, 1],
         "cells": _read_cells(props),
         "patch_name": _read_patch_name(props),
         **_read_grading(props),
@@ -403,6 +434,30 @@ def _extract_face_vertices_local_bmesh(obj, face_index):
         
     return verts_local
 
+def _normalize_winding(face_pts, sweep_vec):
+    """
+    Ensures the 4-point face is wound correctly relative to the sweep/extrusion vector.
+    If the face normal points against the sweep direction, reverses the points in-place
+    to prevent 'inside-out' hex errors in blockMesh.
+    """
+    if len(face_pts) != 4:
+        return
+        
+    p0, p1, p2 = face_pts[0], face_pts[1], face_pts[2]
+    
+    v1 = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]]
+    v2 = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]]
+    
+    n = [
+        v1[1]*v2[2] - v1[2]*v2[1],
+        v1[2]*v2[0] - v1[0]*v2[2],
+        v1[0]*v2[1] - v1[1]*v2[0]
+    ]
+    
+    dot = n[0]*sweep_vec[0] + n[1]*sweep_vec[1] + n[2]*sweep_vec[2]
+    if dot < 0:
+        face_pts.reverse()
+
 def _build_extrude_spec(obj, props):
     axis = getattr(props, "extrude_axis", "Z")
     dist = getattr(props, "extrude_distance", 1.0)
@@ -423,6 +478,8 @@ def _build_extrude_spec(obj, props):
     if axis == "X": vec[0] = dist
     elif axis == "Y": vec[1] = dist
     elif axis == "Z": vec[2] = dist
+    
+    _normalize_winding(face_pts, vec)
     
     return {
         "type": "extrude",
@@ -490,6 +547,23 @@ def _build_revolve_spec(obj, props):
     if axis_str == "X": axis[0] = 1.0
     elif axis_str == "Y": axis[1] = 1.0
     elif axis_str == "Z": axis[2] = 1.0
+    
+    # Revolve sweep direction is cross product of axis and (center - origin)
+    cx = sum(p[0] for p in face_pts) / 4.0
+    cy = sum(p[1] for p in face_pts) / 4.0
+    cz = sum(p[2] for p in face_pts) / 4.0
+    
+    dx = cx - origin[0]
+    dy = cy - origin[1]
+    dz = cz - origin[2]
+    
+    sweep = [
+        axis[1]*dz - axis[2]*dy,
+        axis[2]*dx - axis[0]*dz,
+        axis[0]*dy - axis[1]*dx
+    ]
+    
+    _normalize_winding(face_pts, sweep)
     
     return {
         "type": "revolve",

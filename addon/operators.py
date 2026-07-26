@@ -87,8 +87,8 @@ class CLASSY_OT_generate_mesh(bpy.types.Operator):
 
             warnings = spec.get("warnings", [])
             if warnings:
-                warning_msg = "Unsupported objects will be skipped: " + " | ".join(
-                    warning.split(": ", 1)[0] for warning in warnings[:4]
+                warning_msg = "Skipped objects: " + " | ".join(
+                    w for w in warnings[:4]
                 )
                 if len(warnings) > 4:
                     warning_msg += f" | +{len(warnings) - 4} more"
