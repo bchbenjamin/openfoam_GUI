@@ -1,4 +1,5 @@
 # Beginner's Guide: Classy Blender Mesh
+
 This guide walks you through every implemented feature, step by step, with checkpoints so you know when each step has worked. It assumes you are new to structured meshing but are comfortable using Blender.
 **What this tool does:** It converts the 3D objects you build in Blender into a structured hex mesh for OpenFOAM — so instead of writing a `blockMeshDict` by hand, you model shapes visually and click a button.
 ---
