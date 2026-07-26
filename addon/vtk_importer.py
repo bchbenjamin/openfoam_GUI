@@ -131,7 +131,10 @@ def load_vtk_as_blender_mesh(vtk_path, mesh_name="BlockMesh_Result"):
         obj = bpy.data.objects.new(name, blender_mesh)
         bpy.context.collection.objects.link(obj)
         
-        obj.location = (0, 0, 0)
+        # Do NOT set obj.location here. The VTK file encodes vertices in
+        # world-space coordinates. Blender defaults new objects to (0, 0, 0)
+        # which is correct — the mesh data already carries the right positions.
+        # Forcing (0, 0, 0) was redundant and misleading.
         obj.select_set(True)
         if hasattr(obj, "classy_block_props"):
             pass  # Let users decide whether to exclude result objects

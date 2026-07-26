@@ -59,9 +59,21 @@ def extract_geometry(context):
         if getattr(props, "exclude_from_mesh", False):
             continue
 
-        # Fast path for sketch tool lines
+        # Fast path for sketch tool lines.
+        # IMPORTANT: must check block_type BEFORE calling _build_sketch_spec,
+        # because CLASSY_OT_extrude_sketch / _revolve_sketch set block_type on
+        # classy_block_props after the sketch is drawn. If we always call
+        # _build_sketch_spec here, we emit type='sketch' which mesh_builder
+        # does not know how to build, crashing the pipeline.
         if obj.get("classy_sketch"):
-            spec = _build_sketch_spec(obj, props)
+            block_type = getattr(props, "block_type", "SKETCH") if props else "SKETCH"
+            if block_type == "EXTRUDE":
+                spec = _build_extrude_spec(obj, props)
+            elif block_type == "REVOLVE":
+                spec = _build_revolve_spec(obj, props)
+            else:
+                # Untagged sketch — store as 'sketch' type (not yet actionable)
+                spec = _build_sketch_spec(obj, props)
             if spec:
                 blocks.append(spec)
             continue
