@@ -4,6 +4,39 @@ This guide is for CFD engineers who already know `blockMeshDict` syntax, grading
 ## What the Add-on Generates
 The add-on produces a single `system/blockMeshDict` via the `classy_blocks` Python library, then calls `blockMesh` as a subprocess. It also generates a minimal case scaffold (`controlDict`, `fvSchemes`, `fvSolution`, `0/` directory) suitable as a starting point for incompressible solvers. **You are expected to edit the generated case files** — the scaffold is not solver-ready without tuning.
 ---
+## UI Reference Guide
+The **Classy Blocks Mesh** panel (found in the 3D viewport's N-panel under the **ClasyMesh** tab) maps directly to OpenFOAM/`classy_blocks` operations.
+
+### Main Viewport Tools
+| UI Panel | Control | OpenFOAM / `classy_blocks` Concept |
+|---|---|---|
+| **Add Classy Primitives** | **Box**, **Cylinder**, **Frustum** | Spawns a Blender mesh sized 2x2x2 to act as a bounding-box proxy. The extractor reads the `matrix_world` to build `cb.Box`, `cb.Cylinder`, or `cb.Frustum`. |
+| | **Draw Sketch** | Invokes a modal tool to create a 4-point `ClassySketch` Curve. Serves as a 2D profile (`cb.Face`) for `cb.Extrude` or `cb.Revolve`. |
+| **Sketch Actions** | **Extrude Sketch** / **Revolve Sketch** | Sets the `block_type` property on the selected Sketch curve, routing it to `_build_extrude_spec()` or `_build_revolve_spec()`. |
+| **2D Sketch Tools** | **Tag as Extrude / Revolve / Loft Block** | (Edit Mode only) Saves the indices of the selected quad face(s) to the object's properties. These faces become the `cb.Face` input for extrusion, revolution, or lofting. |
+| **Terrain Utilities** | **Export as Terrain STL** | Exports the selected mesh as an ASCII STL to `constant/triSurface/terrain.stl` and `constant/geometry/terrain.stl`, preparing it for OpenFOAM's `searchableSurface`. |
+
+### Per-Object Settings (Object Mode)
+| UI Section | Control | OpenFOAM / `classy_blocks` Concept |
+|---|---|---|
+| *(Header)* | **Exclude '{obj}'** | Toggles `exclude_from_mesh`. When checked, the object is ignored during blockMeshDict generation. |
+| *(Common)* | **Cells X/Y/Z** | `cells` parameter in `classy_blocks` operations. Determines the hex cell count per axis. (For cylinders: radial/tangential/axial). |
+| *(Common)* | **Patch Name** | The default OpenFOAM boundary condition (e.g. `wall`) applied to all 6 faces of the block, via `op.set_patch()`. |
+| *(Common)* | **Block Type** | Manually overrides the geometric dispatch logic, forcing the block to be parsed as a specific `classy_blocks` shape. |
+| **Shape Chaining** | **Chain From** | Invokes `.chain(source, length)` on `cb.Cylinder` or `cb.Frustum`. Computes the top face of the source block and builds the current block from it, ensuring coincident vertices and automatic block-merging. |
+| **STL Face Projection**| **Stl Projection Face** & **Stl File** | Injects `geometry` and `project` entries into `blockMeshDict` via `shape.project_side()`, tying a block's face to an STL file using `triSurfaceMesh`. |
+| **Boundary Conditions**| **Side Name** & **Patch Name/Type** | Calls `op.set_patch(patch_name, side_name)` for specific faces. The patch type (e.g. `patch`, `wall`, `symmetry`) is collected and written to `constant/polyMesh/boundary`. |
+| **Grading** | **Grading Type** & **Grading/Size** | Maps to `chop()` operations. **RATIO**: geometric expansion ratio. **START_SIZE**: fixes first cell thickness. **SYMMETRIC**: double-sided grading via `cb.Chop` parameters. |
+
+### Pipeline Execution
+| Control | OpenFOAM / Python Concept |
+|---|---|
+| **▶ Run All** | Sequentially executes the four steps below. Stops early if any step fails. |
+| **1. Generate blockMeshDict** | Evaluates all active meshes via `geometry_extractor.py`, instantiates `classy_blocks.Mesh()`, calls `.format()`, and writes `system/blockMeshDict`. Also calls `case_setup.py` to write `controlDict` etc. |
+| **2. Run blockMesh** | Subprocesses `blockMesh` using the path/environment from your system's `bashrc`. Parses the stdout/stderr for `non_orthogonality` and `skewness`. |
+| **3. Convert to VTK** | Subprocesses `foamToVTK`. Required because Blender cannot read native OpenFOAM `polyMesh` data directly. |
+| **4. Reload in Blender** | Uses PyVista via `vtk_importer.py` to read the VTK files from `VTK/`, extract the surface, and construct a new Blender mesh object containing the generated OpenFOAM topology. |
+---
 ## Block Types and Their `blockMeshDict` Equivalents
 ### Box
 Maps to a single `hex` block spanning `p_min → p_max` in axis-aligned local space. The object's `matrix_world` is passed to `classy_blocks` via translation, rotation, and scaling operations, so all transformations (including non-uniform scaling) work correctly and reliably without needing to apply them in Blender.
