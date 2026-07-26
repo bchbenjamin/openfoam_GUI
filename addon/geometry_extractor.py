@@ -189,7 +189,7 @@ def _build_box_spec(obj, props):
         "patch_name": _read_patch_name(props),
         **_read_grading(props),
         **_read_chain_params(props),
-        "matrix_world": [list(row) for row in obj.matrix_world],
+        "transform": _extract_transform(obj),
     }
             
     return spec
@@ -218,7 +218,7 @@ def _build_cylinder_spec(obj, props):
         "patch_name": _read_patch_name(props),
         **_read_grading(props),
         **_read_chain_params(props),
-        "matrix_world": [list(row) for row in obj.matrix_world],
+        "transform": _extract_transform(obj),
     }
 
 def _build_frustum_spec(obj, props):
@@ -256,7 +256,7 @@ def _build_frustum_spec(obj, props):
         "patch_name": _read_patch_name(props),
         **_read_grading(props),
         **_read_chain_params(props),
-        "matrix_world": [list(row) for row in obj.matrix_world],
+        "transform": _extract_transform(obj),
     }
 
 def _build_extruded_ring_spec(obj, props):
@@ -292,7 +292,7 @@ def _build_extruded_ring_spec(obj, props):
         "patch_name": _read_patch_name(props),
         **_read_grading(props),
         **_read_chain_params(props),
-        "matrix_world": [list(row) for row in obj.matrix_world],
+        "transform": _extract_transform(obj),
     }
 
 def _build_wedge_spec(obj, props):
@@ -322,7 +322,7 @@ def _build_wedge_spec(obj, props):
         "patch_name": _read_patch_name(props),
         **_read_grading(props),
         **_read_chain_params(props),
-        "matrix_world": [list(row) for row in obj.matrix_world],
+        "transform": _extract_transform(obj),
     }
 
 def _make_unsupported_spec(obj, props, reason):
@@ -356,7 +356,7 @@ def _build_loft_spec(obj, props):
         "patch_name": _read_patch_name(props),
         **_read_grading(props),
         **_read_chain_params(props),
-        "matrix_world": [list(row) for row in obj.matrix_world],
+        "transform": _extract_transform(obj),
     }
 
 def _extract_face_vertices_local_bmesh(obj, face_index):
@@ -422,7 +422,7 @@ def _build_extrude_spec(obj, props):
         "patch_name": _read_patch_name(props),
         **_read_grading(props),
         **_read_chain_params(props),
-        "matrix_world": [list(row) for row in obj.matrix_world],
+        "transform": _extract_transform(obj),
     }
 
 def _build_sketch_spec(obj, props):
@@ -434,7 +434,7 @@ def _build_sketch_spec(obj, props):
         "name": obj.name,
         "curve_type": obj.get("classy_curve_type", "POLY"),
         "points": [list(pt) for pt in _extract_curve_points(obj)],
-        "matrix_world": [list(row) for row in obj.matrix_world],
+        "transform": _extract_transform(obj),
         "patch_name": _read_patch_name(props),
         **_read_grading(props),
         **_read_chain_params(props),
@@ -491,7 +491,7 @@ def _build_revolve_spec(obj, props):
         "patch_name": _read_patch_name(props),
         **_read_grading(props),
         **_read_chain_params(props),
-        "matrix_world": [list(row) for row in obj.matrix_world],
+        "transform": _extract_transform(obj),
     }
 
 # ─────────────────────── HELPERS ───────────────────────

@@ -175,6 +175,15 @@ def _register_geometry(mesh: cb.Mesh, stl_name: str) -> None:
     pass
 
 
+def _apply_transform(shape, spec):
+    t = spec.get("transform")
+    if not t:
+        return
+    shape.scale(t["scale"], origin=[0,0,0])
+    if t["rotate_angle"] != 0.0:
+        shape.rotate(t["rotate_angle"], t["rotate_axis"], origin=[0,0,0])
+    shape.translate(t["translate"])
+
 def _build_box(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     """
     Builds a Box block with optional terrain STL projection.
@@ -186,8 +195,7 @@ def _build_box(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     pass
     box = cb.Box(spec["p_min"], spec["p_max"])
     _apply_chops(box, spec)
-    if "matrix_world" in spec:
-        box.transform(spec["matrix_world"])
+    _apply_transform(box, spec)
     
     # STL face projection (native OpenFOAM searchableSurface mechanism)
     _apply_stl_projections(box, mesh, spec)
@@ -216,8 +224,7 @@ def _build_cylinder(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
 
     cyl = cb.Cylinder(axis_pt1, axis_pt2, radius_point)
     _apply_round_chops(cyl, spec)
-    if "matrix_world" in spec:
-        cyl.transform(spec["matrix_world"])
+    _apply_transform(cyl, spec)
     _apply_stl_projections(cyl, mesh, spec)
     _apply_face_patches(cyl, spec)
     mesh.add(cyl)
@@ -296,8 +303,7 @@ def _build_extrude(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     face = cb.Face(face_pts)
     extrude = cb.Extrude(face, vector)
     _apply_chops(extrude, spec)
-    if "matrix_world" in spec:
-        extrude.transform(spec["matrix_world"])
+    _apply_transform(extrude, spec)
     _apply_stl_projections(extrude, mesh, spec)
     _apply_face_patches(extrude, spec)
     mesh.add(extrude)
@@ -319,8 +325,7 @@ def _build_revolve(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     face = cb.Face(face_pts)
     revolve = cb.Revolve(face, angle_rad, axis, origin)
     _apply_chops(revolve, spec)
-    if "matrix_world" in spec:
-        revolve.transform(spec["matrix_world"])
+    _apply_transform(revolve, spec)
     _apply_stl_projections(revolve, mesh, spec)
     _apply_face_patches(revolve, spec)
     mesh.add(revolve)
@@ -348,8 +353,7 @@ def _build_frustum(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
 
     frustum = cb.Frustum(axis_pt1, axis_pt2, radius_point_1, radius_2)
     _apply_round_chops(frustum, spec)
-    if "matrix_world" in spec:
-        frustum.transform(spec["matrix_world"])
+    _apply_transform(frustum, spec)
     _apply_stl_projections(frustum, mesh, spec)
     _apply_face_patches(frustum, spec)
     mesh.add(frustum)
@@ -372,8 +376,7 @@ def _build_loft(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     top_face = cb.Face(top_pts)
     loft = cb.Loft(bottom_face, top_face)
     _apply_chops(loft, spec)
-    if "matrix_world" in spec:
-        loft.transform(spec["matrix_world"])
+    _apply_transform(loft, spec)
     _apply_stl_projections(loft, mesh, spec)
     _apply_face_patches(loft, spec)
     mesh.add(loft)
@@ -399,8 +402,7 @@ def _build_wedge(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     wedge = cb.Wedge(face, angle_rad)
     
     _apply_chops(wedge, spec)
-    if "matrix_world" in spec:
-        wedge.transform(spec["matrix_world"])
+    _apply_transform(wedge, spec)
         
     if hasattr(wedge, "project_side"):
         _apply_stl_projections(wedge, mesh, spec)
@@ -420,8 +422,7 @@ def _build_extruded_ring(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     pass
     ring = cb.ExtrudedRing(axis_pt1, axis_pt2, outer_radius_pt, inner_radius)
     _apply_round_chops(ring, spec)
-    if "matrix_world" in spec:
-        ring.transform(spec["matrix_world"])
+    _apply_transform(ring, spec)
     _apply_face_patches(ring, spec)
     mesh.add(ring)
     return ring
