@@ -64,6 +64,7 @@ class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
             ("LOFT",          "Loft",          "Lofted between 2D sketches"),
         ],
         default="BOX",
+        update=update_sketch_preview
     )
 
     # --- Grading properties ---
@@ -126,10 +127,12 @@ class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
         name="Extrude Along",
         items=[("X", "X", ""), ("Y", "Y", ""), ("Z", "Z", "")],
         default="Z",
+        update=update_sketch_preview
     )
     extrude_distance: bpy.props.FloatProperty(
         name="Extrude Distance (m)",
         default=1.0,
+        update=update_sketch_preview
     )
 
     # --- REVOLVE parameters ---
@@ -138,11 +141,13 @@ class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
     )
     revolve_angle: bpy.props.FloatProperty(
         name="Angle (degrees)", default=90.0, min=-360.0, max=360.0,
+        update=update_sketch_preview
     )
     revolve_axis: bpy.props.EnumProperty(
         name="Revolution Axis",
         items=[("X", "X", ""), ("Y", "Y", ""), ("Z", "Z", "")],
         default="Z",
+        update=update_sketch_preview
     )
     revolve_origin: bpy.props.FloatVectorProperty(
         name="Axis Origin", default=(0.0, 0.0, 0.0), size=3,

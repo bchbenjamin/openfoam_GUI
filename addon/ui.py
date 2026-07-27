@@ -103,7 +103,7 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
             row.operator("classy.extrude_sketch")
             row.operator("classy.revolve_sketch")
 
-        if obj and obj.type == 'MESH':
+        if obj and (obj.type == 'MESH' or (obj.type == 'CURVE' and obj.get("classy_sketch"))):
             layout.separator()
             
             if context.mode == 'EDIT_MESH':
@@ -159,18 +159,22 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                 
                 elif props.block_type == "EXTRUDE":
                     extrude_box = layout.box()
-                    extrude_box.label(text="Extrude Parameters", icon='MESH_CUBE')
+                    extrude_box.label(text="Extrude Parameters (Preview Mode)", icon='MESH_CUBE')
                     extrude_box.prop(props, "extrude_face_index")
                     extrude_box.prop(props, "extrude_axis")
                     extrude_box.prop(props, "extrude_distance")
+                    if obj.type == 'CURVE':
+                        extrude_box.label(text="* Visual preview only. Export to see OpenFOAM mesh.", icon='INFO')
                 
                 elif props.block_type == "REVOLVE":
                     revolve_box = layout.box()
-                    revolve_box.label(text="Revolve Parameters", icon='MESH_CIRCLE')
+                    revolve_box.label(text="Revolve Parameters (Preview Mode)", icon='MESH_CIRCLE')
                     revolve_box.prop(props, "revolve_face_index")
                     revolve_box.prop(props, "revolve_angle")
                     revolve_box.prop(props, "revolve_axis")
                     revolve_box.prop(props, "revolve_origin")
+                    if obj.type == 'CURVE':
+                        revolve_box.label(text="* Visual preview only. Export to see OpenFOAM mesh.", icon='INFO')
                     
                 elif props.block_type == "LOFT":
                     loft_box = layout.box()
