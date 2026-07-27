@@ -563,6 +563,10 @@ def _build_revolve_spec(obj, props):
         axis[0]*dy - axis[1]*dx
     ]
     
+    # If the revolve angle is negative, the sweep direction is reversed
+    if angle_deg < 0:
+        sweep = [-s for s in sweep]
+    
     _normalize_winding(face_pts, sweep)
     
     return {
