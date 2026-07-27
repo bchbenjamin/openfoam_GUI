@@ -137,6 +137,8 @@ def extract_geometry(context):
                 if stl_basename and stl_basename.lower().endswith(".stl"):
                     face_name = getattr(props, "stl_projection_face", "top")
                     spec["stl_projections"] = { face_name: stl_basename }
+                    import bpy
+                    spec["stl_absolute_path"] = bpy.path.abspath(stl_file.strip())
 
             blocks.append(spec)
             if spec["type"] == "unsupported":

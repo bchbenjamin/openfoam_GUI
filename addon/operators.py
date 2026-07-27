@@ -108,6 +108,36 @@ class CLASSY_OT_generate_mesh(bpy.types.Operator):
                 set_status(context, "Failed: No supported mesh objects")
                 return {'CANCELLED'}
 
+            # Guarantee all STL files are present in the case directory
+            import shutil
+            for block in meshable_blocks:
+                if "stl_projections" in block and "stl_absolute_path" in block:
+                    stl_abs = block["stl_absolute_path"]
+                    stl_base = block["stl_projections"][list(block["stl_projections"].keys())[0]]
+                    
+                    if not os.path.isfile(stl_abs):
+                        self.report({'ERROR'}, f"STL file not found at '{stl_abs}' (referenced by block '{block.get('name', 'Unknown')}')")
+                        set_status(context, "Failed: STL file not found")
+                        return {'CANCELLED'}
+                        
+                    # blockMesh requires the STL to be in constant/geometry for searchableSurface (as confirmed by the OpenFOAM IO error).
+                    # SnappyHexMesh often looks in constant/triSurface by default.
+                    # We copy to both locations for full compatibility with OF meshing tools.
+                    stl_dir_geom = os.path.join(case_path, "constant", "geometry")
+                    stl_dir_tri = os.path.join(case_path, "constant", "triSurface")
+                    os.makedirs(stl_dir_geom, exist_ok=True)
+                    os.makedirs(stl_dir_tri, exist_ok=True)
+                    
+                    dest_geom = os.path.join(stl_dir_geom, stl_base)
+                    dest_tri = os.path.join(stl_dir_tri, stl_base)
+                    
+                    source_size = os.path.getsize(stl_abs)
+                    
+                    # Smart copy: avoid redundant I/O for large STL files
+                    for dest in (dest_geom, dest_tri):
+                        if not os.path.exists(dest) or os.path.getsize(dest) != source_size:
+                            shutil.copy2(stl_abs, dest)
+
             # Build the blockMeshDict (auto-detection already classified shapes)
             mesh_builder.build_from_spec(spec, output_path)
 
