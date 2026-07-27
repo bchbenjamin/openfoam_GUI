@@ -105,13 +105,16 @@ Same as extrude — select a quad face, click **Tag as Revolve Block**. Then set
 The Sketch Tool lets you draw a profile directly in the viewport instead of selecting faces on a mesh.
 ### Draw a Sketch
 1. In Object Mode, click **Draw Sketch** in the **Add Classy Primitives** section.
-2. Your cursor changes — you are now in the sketch modal tool.
-3. **Left-click** in the viewport to place points. Each click adds one point to the profile.
+2. An operator box will appear at the bottom-left of the viewport. Here, you can select the **Sketch Plane**:
+   - **XY Plane (Ground)**: Default plane. Good for extrusion.
+   - **XZ Plane (Front)** / **YZ Plane (Side)**: Upright planes. **Crucial for Revolve** if you want to revolve around the Z-axis.
+3. Your cursor changes — you are now in the sketch modal tool.
+4. **Left-click** in the viewport to place points. Each click adds one point to the profile.
    - If your click hits an existing mesh object, the point snaps to that surface.
-   - If not, the point falls onto the Z=0 plane.
+   - If not, the point falls onto your selected Sketch Plane.
    - Hold **Ctrl** while clicking to snap to the nearest 0.1m grid point.
-4. When done, press **Enter** (or **Space**) to finalize.
-5. Press **Escape** or **Right-click** to cancel.
+5. When done, press **Enter** (or **Space**) to finalize.
+6. Press **Escape** or **Right-click** to cancel.
 **✓ Checkpoint:** A new `ClassySketch` Curve object appears in the Outliner. It should be selected automatically and become the active object.
 > **Why exactly 4 points?** OpenFOAM's `blockMesh` uses hexahedral cells, which have 8 corners. An extruded or revolved block starts from a 4-vertex quad face — so the profile must have exactly 4 points to form a valid quad. The tool doesn't prevent you from placing fewer or more, but the downstream operators will warn you.
 ### Convert the Sketch

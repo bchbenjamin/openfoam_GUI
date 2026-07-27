@@ -175,6 +175,48 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                     revolve_box.prop(props, "revolve_origin")
                     if obj.type == 'CURVE':
                         revolve_box.label(text="* Visual preview only. Export to see OpenFOAM mesh.", icon='INFO')
+                        
+                        # Dynamic validation for degenerate revolve geometry
+                        try:
+                            from . import geometry_extractor
+                            pts = geometry_extractor._extract_curve_points(obj)
+                            if len(pts) == 4:
+                                p0, p1, p2 = pts[0], pts[1], pts[2]
+                                v1 = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]]
+                                v2 = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]]
+                                n = [
+                                    v1[1]*v2[2] - v1[2]*v2[1],
+                                    v1[2]*v2[0] - v1[0]*v2[2],
+                                    v1[0]*v2[1] - v1[1]*v2[0]
+                                ]
+                                
+                                axis_str = props.revolve_axis
+                                # Evaluate revolve axis (even if it's a custom vector in the future, currently X/Y/Z)
+                                if axis_str == 'X':
+                                    rev_axis = [1, 0, 0]
+                                elif axis_str == 'Y':
+                                    rev_axis = [0, 1, 0]
+                                else:
+                                    rev_axis = [0, 0, 1]
+                                    
+                                mag_n = (n[0]**2 + n[1]**2 + n[2]**2)**0.5
+                                mag_a = (rev_axis[0]**2 + rev_axis[1]**2 + rev_axis[2]**2)**0.5
+                                
+                                if mag_n > 1e-6 and mag_a > 1e-6:
+                                    dot = n[0]*rev_axis[0] + n[1]*rev_axis[1] + n[2]*rev_axis[2]
+                                    # Cosine of angle between normal and axis.
+                                    # If |cos| ~ 1, normal is parallel to axis, so sketch plane is perpendicular to axis (degenerate 0-volume sweep).
+                                    # This dimensionless relative check replaces absolute bounding-box variance checks.
+                                    if abs(dot) / (mag_n * mag_a) > 1.0 - 1e-3:
+                                        warn_row = revolve_box.row()
+                                        warn_row.alert = True
+                                        warn_row.label(
+                                            text=f"⚠ Invalid Geometry: Sketch is orthogonal to {axis_str}-axis (0 volume).",
+                                            icon='ERROR'
+                                        )
+                        except Exception:
+                            pass
+
                     
                 elif props.block_type == "LOFT":
                     loft_box = layout.box()

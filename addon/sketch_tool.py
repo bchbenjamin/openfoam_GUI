@@ -24,6 +24,17 @@ class CLASSY_OT_add_sketch_point(bpy.types.Operator):
         default="POLY"
     )
 
+    sketch_plane: bpy.props.EnumProperty(
+        name="Sketch Plane",
+        items=[
+            ("XY", "XY Plane (Ground)", "Draw on the flat ground plane"),
+            ("XZ", "XZ Plane (Front)", "Draw upright facing front (good for Revolve)"),
+            ("YZ", "YZ Plane (Side)", "Draw upright facing side"),
+        ],
+        default="XY",
+        description="Select which plane to draw the sketch on (used as fallback when not clicking on geometry)"
+    )
+
     def __init__(self):
         self._points = []
         self._mouse_pos = (0, 0)
@@ -62,9 +73,15 @@ class CLASSY_OT_add_sketch_point(bpy.types.Operator):
         if hit:
             pt = location.copy()
         else:
-            # 2. Fallback to Z=0 plane
+            # 2. Fallback to chosen sketch plane
             plane_co = Vector((0.0, 0.0, 0.0))
-            plane_no = Vector((0.0, 0.0, 1.0))
+            if self.sketch_plane == 'XZ':
+                plane_no = Vector((0.0, 1.0, 0.0))
+            elif self.sketch_plane == 'YZ':
+                plane_no = Vector((1.0, 0.0, 0.0))
+            else:
+                plane_no = Vector((0.0, 0.0, 1.0))
+                
             pt = intersect_line_plane(ray_origin, ray_origin + view_vector, plane_co, plane_no)
             if pt is None:
                 pt = Vector((0.0, 0.0, 0.0))

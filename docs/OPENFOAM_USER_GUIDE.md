@@ -69,6 +69,9 @@ Parameters exposed in the panel:
 - `revolve_axis` (X/Y/Z unit vector)
 - `revolve_origin` (3D point)
 This is equivalent to hand-writing a revolve block in `blockMeshDict`. The face is the 2D cross-section; `origin` and `axis` define the sweep axis.
+
+> ⚠ **Geometric Constraint (0-Volume Blocks):** `blockMesh` requires all blocks to have a non-zero 3D volume. If your 2D sketch is perfectly flat on a plane orthogonal to the revolution axis (e.g., drawing on the Z=0 plane and revolving around Z), the face's normal is parallel to the axis. This causes the face to sweep across its own plane, creating a flat disc with 0 volume. OpenFOAM will crash with a fatal `inside-out` IO error. 
+> **Rule:** The face normal must be orthogonal (or oblique) to the revolution axis. When using the Sketch tool, select the **XZ Plane (Front)** or **YZ Plane (Side)** if you intend to revolve around the **Z** axis.
 ### Loft
 Maps to `cb.Loft(bottom_face, top_face)`. Requires two quad faces selected in Edit Mode → **Tag as Loft Block**. The extractor reads both face vertex positions. Both faces must have exactly 4 vertices; the faces do not need to be parallel or the same size.
 ### Wedge (Axisymmetric)
