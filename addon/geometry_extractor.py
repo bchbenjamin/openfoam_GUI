@@ -83,8 +83,8 @@ def extract_geometry(context):
             elif block_type == "REVOLVE":
                 spec = _build_revolve_spec(obj, props)
             else:
-                # Untagged sketch — store as 'sketch' type (not yet actionable)
-                spec = _build_sketch_spec(obj, props)
+                # Untagged sketch — skip it. mesh_builder does not know how to build a raw sketch.
+                spec = None
             if spec:
                 blocks.append(spec)
             continue

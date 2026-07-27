@@ -433,6 +433,28 @@ def test_normalize_winding_corrects_inside_out():
     _ge._normalize_winding(pts2, [0, 0, 1])
     assert pts2 == face_pts_ccw
 
+def test_untagged_sketch_is_skipped():
+    """
+    Regression check: Ensure an untagged sketch (block_type=SKETCH) is skipped entirely
+    in extract_geometry and does NOT fall through to _build_sketch_spec, which would
+    emit an unsupported 'sketch' block type and crash blockMeshDict generation.
+    """
+    obj = _make_mock_object("RawSketch", _UNIT_CUBE_BBOX, _MockMatrix((0, 0, 0)),
+                             {"block_type": "SKETCH"})
+    # Mock obj.get("classy_sketch") to return True
+    obj.get = MagicMock(side_effect=lambda k, d=None: 1 if k == "classy_sketch" else d)
+    
+    mock_ctx = MagicMock()
+    mock_ctx.scene.objects = [obj]
+    
+    with patch.object(_ge, '_build_sketch_spec') as mock_build_sketch:
+        result = _ge.extract_geometry(mock_ctx)
+        
+        # Must NOT call _build_sketch_spec, and must produce 0 blocks
+        mock_build_sketch.assert_not_called()
+        assert len(result["blocks"]) == 0
+        assert len(result["warnings"]) == 0
+
 if __name__ == "__main__":
     test_box_identity()
     test_box_translated()
