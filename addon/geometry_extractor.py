@@ -455,6 +455,28 @@ def _normalize_winding(face_pts, sweep_vec):
     ]
     
     dot = n[0]*sweep_vec[0] + n[1]*sweep_vec[1] + n[2]*sweep_vec[2]
+    
+    # Degenerate check 1: Sweep vector is zero (e.g. revolve axis passes through sketch center)
+    mag_s = (sweep_vec[0]**2 + sweep_vec[1]**2 + sweep_vec[2]**2)**0.5
+    if mag_s < 1e-6:
+        raise RuntimeError(
+            "Degenerate geometry: The sweep vector is zero. For Revolution, this usually means "
+            "the revolution axis passes exactly through the center of your sketch, resulting "
+            "in a self-intersecting 0-volume block. Move the sketch away from the axis in Edit Mode."
+        )
+
+    # Degenerate check 2: Face normal is orthogonal to sweep (0 volume block)
+    mag_n = (n[0]**2 + n[1]**2 + n[2]**2)**0.5
+    if mag_n > 1e-6:
+        if abs(dot) / (mag_n * mag_s) < 1e-4:
+            raise RuntimeError(
+                "Degenerate geometry detected. The sketch is exactly parallel to the sweep direction, "
+                "which generates a 0-volume block (inside-out). For Revolution, ensure the sketch "
+                "doesn't lie flat on the plane orthogonal to the revolution axis. For Extrusion, "
+                "ensure the sketch isn't perfectly aligned with the extrusion vector."
+            )
+            
+            
     if dot < 0:
         face_pts.reverse()
 
