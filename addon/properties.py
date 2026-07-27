@@ -33,6 +33,28 @@ class ClassyFacePatch(bpy.types.PropertyGroup):
         default="wall"
     )
 
+def update_sketch_preview(self, context):
+    obj = context.active_object
+    if not (obj and obj.type == 'CURVE' and obj.get("classy_sketch")):
+        return
+    
+    # Remove existing previews
+    for m in list(obj.modifiers):
+        if m.name.startswith("(Preview)"):
+            obj.modifiers.remove(m)
+            
+    if self.block_type == "EXTRUDE":
+        mod = obj.modifiers.new(name="(Preview) Extrude", type='SCREW')
+        mod.angle = 0
+        mod.screw_offset = self.extrude_distance
+        mod.axis = self.extrude_axis
+    elif self.block_type == "REVOLVE":
+        mod = obj.modifiers.new(name="(Preview) Revolve", type='SCREW')
+        import math
+        mod.angle = math.radians(self.revolve_angle)
+        mod.screw_offset = 0
+        mod.axis = self.revolve_axis
+
 class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
     exclude_from_mesh: bpy.props.BoolProperty(
         name="Exclude from Mesh",

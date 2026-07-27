@@ -1,10 +1,10 @@
-bl_info = {"name": "Classy Blocks Integration", "category": "Mesh", "blender": (4, 0, 0)}
 """
 Classy Blocks Integration Add-on for Blender.
 
 This package registers the Blender add-on, initializes the Parametric Structured
 Mesh Builder pipeline, and ties together the UI, operators, and core extraction logic.
 """
+bl_info = {"name": "Classy Blocks Integration", "category": "Mesh", "blender": (4, 0, 0)}
 # pyrefly: ignore [missing-import]
 import bpy
 from . import properties, ui, operators, geometry_extractor, vtk_importer, preferences
