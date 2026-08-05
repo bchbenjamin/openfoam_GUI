@@ -12,7 +12,16 @@ from . import mesh_builder, foam_runner, geometry_extractor, vtk_importer, case_
 from . import foam_path_utils
 from . import auto_update as _auto_update
 
-def set_status(context, status_msg):
+def set_status(context, status_msg) -> None:
+    """
+
+    Args:
+      context: 
+      status_msg: 
+
+    Returns:
+
+    """
     time_str = datetime.datetime.now().strftime("%H:%M:%S")
     context.scene.classy_mesh_props.pipeline_status = f"[{time_str}] {status_msg}"
     if hasattr(context, "area") and context.area:
@@ -23,6 +32,14 @@ def set_status(context, status_msg):
 
 
 def get_case_path(context):
+    """
+
+    Args:
+      context: 
+
+    Returns:
+
+    """
     scene_props = context.scene.classy_mesh_props
     case_path = scene_props.case_path
     if not case_path:
@@ -33,8 +50,16 @@ def get_case_path(context):
     return case_path
 
 
-def _save_last_case_dir(context, case_path):
-    """Persist the last-used case directory into AddonPreferences."""
+def _save_last_case_dir(context, case_path) -> None:
+    """Persist the last-used case directory into AddonPreferences.
+
+    Args:
+      context: 
+      case_path: 
+
+    Returns:
+
+    """
     try:
         prefs = context.preferences.addons[__package__].preferences
         if case_path and case_path != prefs.last_case_dir:
@@ -48,13 +73,29 @@ class CLASSY_OT_generate_mesh(bpy.types.Operator):
     bl_label = "Generate Mesh"
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         set_status(context, "Generating blockMeshDict...")
         scene_props = context.scene.classy_mesh_props
         scene_props.structure_warning = ""
         case_path = get_case_path(context)
 
         if not case_path:
-            def draw_error(self, context):
+            def draw_error(self, context) -> None:
+                """
+
+                Args:
+                  context: 
+
+                Returns:
+
+                """
                 self.layout.label(text="Case directory is not set!", icon='ERROR')
                 self.layout.label(text="Open the Classy Blocks panel and set the Case Directory.")
             context.window_manager.popup_menu(draw_error, title="No Case Directory", icon='ERROR')
@@ -168,6 +209,14 @@ class CLASSY_OT_run_blockmesh(bpy.types.Operator):
     bl_label = "Run blockMesh"
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         set_status(context, "Running blockMesh...")
         scene_props = context.scene.classy_mesh_props
         case_path = get_case_path(context)
@@ -178,7 +227,15 @@ class CLASSY_OT_run_blockmesh(bpy.types.Operator):
 
         # Path validation guard
         if not case_path:
-            def draw_error(self, context):
+            def draw_error(self, context) -> None:
+                """
+
+                Args:
+                  context: 
+
+                Returns:
+
+                """
                 self.layout.label(text="Case directory is not set!", icon='ERROR')
                 self.layout.label(text="Open the Classy Blocks panel and set the Case Directory.")
             context.window_manager.popup_menu(draw_error, title="No Case Directory", icon='ERROR')
@@ -189,7 +246,15 @@ class CLASSY_OT_run_blockmesh(bpy.types.Operator):
         case_path = foam_path_utils.resolve_case_path(case_path)
 
         if not os.path.isdir(case_path):
-            def draw_not_found(self, context):
+            def draw_not_found(self, context) -> None:
+                """
+
+                Args:
+                  context: 
+
+                Returns:
+
+                """
                 self.layout.label(text=f"Case directory not found at '{case_path}'", icon='ERROR')
             context.window_manager.popup_menu(draw_not_found, title="Case Not Found", icon='ERROR')
             self.report({'ERROR'}, f"blockMesh failed: case directory not found at '{case_path}'")
@@ -263,6 +328,14 @@ class CLASSY_OT_convert_vtk(bpy.types.Operator):
     bl_label = "Convert to VTK"
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         set_status(context, "Running foamToVTK...")
         scene_props = context.scene.classy_mesh_props
         case_path = get_case_path(context)
@@ -273,7 +346,15 @@ class CLASSY_OT_convert_vtk(bpy.types.Operator):
 
         # Path validation guard
         if not case_path:
-            def draw_error(self, context):
+            def draw_error(self, context) -> None:
+                """
+
+                Args:
+                  context: 
+
+                Returns:
+
+                """
                 self.layout.label(text="Case directory is not set!", icon='ERROR')
             context.window_manager.popup_menu(draw_error, title="No Case Directory", icon='ERROR')
             self.report({'ERROR'}, "Case directory is not set")
@@ -283,7 +364,15 @@ class CLASSY_OT_convert_vtk(bpy.types.Operator):
         case_path = foam_path_utils.resolve_case_path(case_path)
 
         if not os.path.isdir(case_path):
-            def draw_not_found(self, context):
+            def draw_not_found(self, context) -> None:
+                """
+
+                Args:
+                  context: 
+
+                Returns:
+
+                """
                 self.layout.label(text=f"Case directory not found at '{case_path}'", icon='ERROR')
             context.window_manager.popup_menu(draw_not_found, title="Case Not Found", icon='ERROR')
             self.report({'ERROR'}, f"foamToVTK failed: case directory not found at '{case_path}'")
@@ -293,7 +382,15 @@ class CLASSY_OT_convert_vtk(bpy.types.Operator):
         # Check that blockMesh has been run first
         poly_mesh = os.path.join(case_path, "constant", "polyMesh")
         if not os.path.isdir(poly_mesh):
-            def draw_no_mesh(self, context):
+            def draw_no_mesh(self, context) -> None:
+                """
+
+                Args:
+                  context: 
+
+                Returns:
+
+                """
                 self.layout.label(text="polyMesh not found! Run blockMesh first.", icon='ERROR')
             context.window_manager.popup_menu(draw_no_mesh, title="No Mesh Found", icon='ERROR')
             self.report({'ERROR'}, f"polyMesh not found at {poly_mesh} — run blockMesh first (button 2)")
@@ -338,13 +435,29 @@ class CLASSY_OT_reload_mesh(bpy.types.Operator):
     bl_label = "Reload Mesh"
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         set_status(context, "Reloading VTK Mesh...")
         scene_props = context.scene.classy_mesh_props
         case_path = get_case_path(context)
 
         # Path validation guard
         if not case_path:
-            def draw_error(self, context):
+            def draw_error(self, context) -> None:
+                """
+
+                Args:
+                  context: 
+
+                Returns:
+
+                """
                 self.layout.label(text="Case directory is not set!", icon='ERROR')
             context.window_manager.popup_menu(draw_error, title="No Case Directory", icon='ERROR')
             self.report({'ERROR'}, "Case directory is not set")
@@ -354,7 +467,15 @@ class CLASSY_OT_reload_mesh(bpy.types.Operator):
         case_path = foam_path_utils.resolve_case_path(case_path)
 
         if not os.path.isdir(case_path):
-            def draw_not_found(self, context):
+            def draw_not_found(self, context) -> None:
+                """
+
+                Args:
+                  context: 
+
+                Returns:
+
+                """
                 self.layout.label(text=f"Case directory not found at '{case_path}'", icon='ERROR')
             context.window_manager.popup_menu(draw_not_found, title="Case Not Found", icon='ERROR')
             self.report({'ERROR'}, f"Mesh reload failed: case directory not found at '{case_path}'")
@@ -365,7 +486,15 @@ class CLASSY_OT_reload_mesh(bpy.types.Operator):
             vtk_files = vtk_importer.find_vtk_files(case_path)
 
             if not vtk_files:
-                def draw_no_vtk(self, context):
+                def draw_no_vtk(self, context) -> None:
+                    """
+
+                    Args:
+                      context: 
+
+                    Returns:
+
+                    """
                     self.layout.label(text="No VTK files found! Run foamToVTK first.", icon='ERROR')
                 context.window_manager.popup_menu(draw_no_vtk, title="No VTK Files", icon='ERROR')
                 self.report({'ERROR'}, f"No VTK files found in {case_path}/VTK/ — run foamToVTK first (button 3)")
@@ -400,11 +529,27 @@ class MESH_OT_export_terrain_stl(bpy.types.Operator):
     bl_label = "Export as Terrain STL"
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         scene_props = context.scene.classy_mesh_props
         case_path = get_case_path(context)
 
         if not case_path:
-            def draw_error(self, context):
+            def draw_error(self, context) -> None:
+                """
+
+                Args:
+                  context: 
+
+                Returns:
+
+                """
                 self.layout.label(text="Case directory is not set!", icon='ERROR')
             context.window_manager.popup_menu(draw_error, title="No Case Directory", icon='ERROR')
             self.report({'ERROR'}, "Case directory is not set")
@@ -438,6 +583,14 @@ class CLASSY_OT_project_to_stl(bpy.types.Operator):
     bl_label = "Validate STL Projection"
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         set_status(context, "Validating STL...")
         obj = context.active_object
         if not obj or obj.type != 'MESH':
@@ -450,7 +603,15 @@ class CLASSY_OT_project_to_stl(bpy.types.Operator):
 
         # Path validation guard
         if not stl_path:
-            def draw_error(self, context):
+            def draw_error(self, context) -> None:
+                """
+
+                Args:
+                  context: 
+
+                Returns:
+
+                """
                 self.layout.label(text="STL File is not set!", icon='ERROR')
             context.window_manager.popup_menu(draw_error, title="No STL File", icon='ERROR')
             self.report({'ERROR'}, "STL File is not set")
@@ -460,7 +621,15 @@ class CLASSY_OT_project_to_stl(bpy.types.Operator):
         stl_path = bpy.path.abspath(stl_path)
 
         if not os.path.isfile(stl_path):
-            def draw_not_found(self, context):
+            def draw_not_found(self, context) -> None:
+                """
+
+                Args:
+                  context: 
+
+                Returns:
+
+                """
                 self.layout.label(text=f"STL file not found at '{stl_path}'", icon='ERROR')
             context.window_manager.popup_menu(draw_not_found, title="STL Not Found", icon='ERROR')
             self.report({'ERROR'}, f"STL validation failed: file not found at '{stl_path}'")
@@ -501,6 +670,14 @@ class CLASSY_OT_run_all(bpy.types.Operator):
     bl_label = "Run All"
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         context.window.cursor_set('WAIT')
         # Hold the auto-update lock for the entire pipeline so the depsgraph
         # changes from VTK mesh import don't schedule a second run.
@@ -555,10 +732,26 @@ class CLASSY_OT_extrude_sketch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         obj = context.active_object
         return obj and obj.type == 'CURVE' and obj.get("classy_sketch")
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         obj = context.active_object
         curve = obj.data
         if not curve.splines:
@@ -582,10 +775,26 @@ class CLASSY_OT_revolve_sketch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         obj = context.active_object
         return obj and obj.type == 'CURVE' and obj.get("classy_sketch")
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         obj = context.active_object
         curve = obj.data
         if not curve.splines:
@@ -609,9 +818,25 @@ class CLASSY_OT_tag_extrude(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         return context.mode == 'EDIT_MESH' and context.active_object
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         import bmesh
         obj = context.active_object
         bm = bmesh.from_edit_mesh(obj.data)
@@ -647,9 +872,25 @@ class CLASSY_OT_tag_revolve(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         return context.mode == 'EDIT_MESH' and context.active_object
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         import bmesh
         obj = context.active_object
         bm = bmesh.from_edit_mesh(obj.data)
@@ -683,9 +924,25 @@ class CLASSY_OT_tag_loft(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         return context.mode == 'EDIT_MESH' and context.active_object
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         import bmesh
         obj = context.active_object
         bm = bmesh.from_edit_mesh(obj.data)
@@ -719,9 +976,25 @@ class CLASSY_OT_add_boundary_patch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         return context.active_object and hasattr(context.active_object, "classy_block_props")
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         props = context.active_object.classy_block_props
         new_patch = props.face_patches.add()
         
@@ -744,12 +1017,28 @@ class CLASSY_OT_remove_boundary_patch(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         obj = context.active_object
         if not obj or not hasattr(obj, "classy_block_props"):
             return False
         return len(obj.classy_block_props.face_patches) > 0
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         props = context.active_object.classy_block_props
         idx = props.active_face_patch_index
         props.face_patches.remove(idx)
@@ -763,6 +1052,14 @@ class CLASSY_OT_add_box(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         bpy.ops.mesh.primitive_cube_add()
         if context.active_object:
             context.active_object.classy_block_props.block_type = 'BOX'
@@ -775,6 +1072,14 @@ class CLASSY_OT_add_cylinder(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         bpy.ops.mesh.primitive_cylinder_add()
         if context.active_object:
             context.active_object.classy_block_props.block_type = 'CYLINDER'
@@ -787,6 +1092,14 @@ class CLASSY_OT_add_frustum(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         bpy.ops.mesh.primitive_cone_add(radius1=1.0, radius2=0.5)
         if context.active_object:
             context.active_object.classy_block_props.block_type = 'FRUSTUM'
@@ -800,8 +1113,15 @@ _PREVIEW_SHRINKWRAP_NAME = "(Preview) Terrain Shrinkwrap"
 _PREVIEW_STL_PREFIX = "_classy_terrain_"
 
 
-def _remove_preview_modifiers(obj):
-    """Strip the Subsurf + Shrinkwrap preview modifiers from *obj*."""
+def _remove_preview_modifiers(obj) -> None:
+    """Strip the Subsurf + Shrinkwrap preview modifiers from *obj*.
+
+    Args:
+      obj: 
+
+    Returns:
+
+    """
     for name in (_PREVIEW_SHRINKWRAP_NAME, _PREVIEW_SUBSURF_NAME):
         mod = obj.modifiers.get(name)
         if mod:
@@ -816,6 +1136,14 @@ class CLASSY_OT_preview_projection(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         obj = context.active_object
         if not obj or obj.type != 'MESH':
             return False
@@ -825,6 +1153,14 @@ class CLASSY_OT_preview_projection(bpy.types.Operator):
         return bool(getattr(props, "stl_file", ""))
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         obj = context.active_object
         props = obj.classy_block_props
 
@@ -920,6 +1256,14 @@ class CLASSY_OT_clear_preview(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         obj = context.active_object
         if not obj or obj.type != 'MESH':
             return False
@@ -927,6 +1271,14 @@ class CLASSY_OT_clear_preview(bpy.types.Operator):
         return props and getattr(props, "is_previewing_terrain", False)
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         obj = context.active_object
         props = obj.classy_block_props
 

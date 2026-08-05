@@ -12,6 +12,7 @@ from pathlib import Path
 import bpy
 
 def auto_detect_foam_dirs():
+    """ """
     foam_run = os.environ.get('FOAM_RUN', '')
     foam_tutorials = os.environ.get('FOAM_TUTORIALS', '')
     
@@ -48,6 +49,7 @@ def auto_detect_foam_dirs():
 _default_foam_run, _default_foam_tutorials = auto_detect_foam_dirs()
 
 class FoamDirectoryProperties(bpy.types.PropertyGroup):
+    """ """
     foam_run_dir: bpy.props.StringProperty(
         name="FOAM_RUN",
         description="Path to your OpenFOAM run directory",
@@ -62,13 +64,22 @@ class FoamDirectoryProperties(bpy.types.PropertyGroup):
     )
 
 class CLASSY_PT_foam_directories(bpy.types.Panel):
+    """ """
     bl_label = "OpenFOAM Directories"
     bl_idname = "CLASSY_PT_foam_directories"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'Classy FOAM'
 
-    def draw(self, context):
+    def draw(self, context) -> None:
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         layout = self.layout
         scene = context.scene
         
@@ -82,12 +93,14 @@ class CLASSY_PT_foam_directories(bpy.types.Panel):
         layout.prop(scene.foam_dirs, "foam_run_dir")
         layout.prop(scene.foam_dirs, "foam_tutorials_dir")
 
-def register():
+def register() -> None:
+    """ """
     bpy.utils.register_class(FoamDirectoryProperties)
     bpy.types.Scene.foam_dirs = bpy.props.PointerProperty(type=FoamDirectoryProperties)
     bpy.utils.register_class(CLASSY_PT_foam_directories)
 
-def unregister():
+def unregister() -> None:
+    """ """
     bpy.utils.unregister_class(CLASSY_PT_foam_directories)
     del bpy.types.Scene.foam_dirs
     bpy.utils.unregister_class(FoamDirectoryProperties)

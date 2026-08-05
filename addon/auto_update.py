@@ -17,6 +17,7 @@ _timer_scheduled = False
 is_auto_updating = False
 
 def run_pipeline_if_needed():
+    """ """
     global _timer_scheduled, is_auto_updating
     _timer_scheduled = False
     
@@ -64,7 +65,15 @@ def run_pipeline_if_needed():
         
     return None
 
-def trigger_update_timer(delay):
+def trigger_update_timer(delay) -> None:
+    """
+
+    Args:
+      delay: 
+
+    Returns:
+
+    """
     global _last_update_time, _timer_scheduled
     _last_update_time = time.time()
     
@@ -72,6 +81,7 @@ def trigger_update_timer(delay):
         _timer_scheduled = True
         
         def timer_wrapper():
+            """ """
             global _timer_scheduled
             now = time.time()
             time_since_last_update = now - _last_update_time
@@ -85,8 +95,16 @@ def trigger_update_timer(delay):
         bpy.app.timers.register(timer_wrapper, first_interval=delay)
 
 @bpy.app.handlers.persistent
-def auto_update_handler(scene, depsgraph):
-    """Depsgraph handler that schedules the auto-update timer."""
+def auto_update_handler(scene, depsgraph) -> None:
+    """Depsgraph handler that schedules the auto-update timer.
+
+    Args:
+      scene: 
+      depsgraph: 
+
+    Returns:
+
+    """
     if is_auto_updating:
         return
         
@@ -104,8 +122,16 @@ def auto_update_handler(scene, depsgraph):
     trigger_update_timer(delay)
 
 @bpy.app.handlers.persistent
-def undo_handler(scene, *args):
-    """Handler to trigger auto-update on Undo"""
+def undo_handler(scene, *args) -> None:
+    """Handler to trigger auto-update on Undo
+
+    Args:
+      scene: 
+      *args: 
+
+    Returns:
+
+    """
     if is_auto_updating:
         return
         
@@ -118,13 +144,15 @@ def undo_handler(scene, *args):
     
     trigger_update_timer(delay)
 
-def register():
+def register() -> None:
+    """ """
     if auto_update_handler not in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.append(auto_update_handler)
     if undo_handler not in bpy.app.handlers.undo_post:
         bpy.app.handlers.undo_post.append(undo_handler)
 
-def unregister():
+def unregister() -> None:
+    """ """
     if auto_update_handler in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(auto_update_handler)
     if undo_handler in bpy.app.handlers.undo_post:

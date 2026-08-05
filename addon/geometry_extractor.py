@@ -48,6 +48,14 @@ import numpy as np
 
 
 def _extract_transform(obj):
+    """
+
+    Args:
+      obj: 
+
+    Returns:
+
+    """
     loc, rot, scale = obj.matrix_world.decompose()
     axis, angle = rot.to_axis_angle()
     return {
@@ -58,6 +66,14 @@ def _extract_transform(obj):
     }
 
 def extract_geometry(context):
+    """
+
+    Args:
+      context: 
+
+    Returns:
+
+    """
     blocks = []
     warnings = []
 
@@ -172,6 +188,15 @@ def extract_geometry(context):
     }
 
 def _validate_transforms(obj, block_type):
+    """
+
+    Args:
+      obj: 
+      block_type: 
+
+    Returns:
+
+    """
     # pyrefly: ignore [import-outside-toplevel, missing-import]
     import bpy
     scale = obj.scale
@@ -205,6 +230,15 @@ def _validate_transforms(obj, block_type):
     return None
 
 def _build_box_spec(obj, props):
+    """
+
+    Args:
+      obj: 
+      props: 
+
+    Returns:
+
+    """
     import os
     local_corners = [c for c in obj.bound_box]
     xs = [c[0] for c in local_corners]
@@ -229,6 +263,15 @@ def _build_box_spec(obj, props):
     return spec
 
 def _build_cylinder_spec(obj, props):
+    """
+
+    Args:
+      obj: 
+      props: 
+
+    Returns:
+
+    """
     local_corners = [c for c in obj.bound_box]
     xs = [c[0] for c in local_corners]
     ys = [c[1] for c in local_corners]
@@ -256,6 +299,15 @@ def _build_cylinder_spec(obj, props):
     }
 
 def _build_frustum_spec(obj, props):
+    """
+
+    Args:
+      obj: 
+      props: 
+
+    Returns:
+
+    """
     # pyrefly: ignore [import-outside-toplevel, missing-import]
     import bpy
     depsgraph = bpy.context.evaluated_depsgraph_get()
@@ -294,6 +346,15 @@ def _build_frustum_spec(obj, props):
     }
 
 def _build_sphere_spec(obj, props):
+    """
+
+    Args:
+      obj: 
+      props: 
+
+    Returns:
+
+    """
     local_corners = [c for c in obj.bound_box]
     xs = [c[0] for c in local_corners]
     ys = [c[1] for c in local_corners]
@@ -317,6 +378,15 @@ def _build_sphere_spec(obj, props):
     }
 
 def _build_extruded_ring_spec(obj, props):
+    """
+
+    Args:
+      obj: 
+      props: 
+
+    Returns:
+
+    """
     # pyrefly: ignore [import-outside-toplevel, missing-import]
     import bpy
     depsgraph = bpy.context.evaluated_depsgraph_get()
@@ -353,6 +423,15 @@ def _build_extruded_ring_spec(obj, props):
     }
 
 def _build_wedge_spec(obj, props):
+    """
+
+    Args:
+      obj: 
+      props: 
+
+    Returns:
+
+    """
     # pyrefly: ignore [import-outside-toplevel, missing-import]
     import bpy
     face_index = getattr(props, "wedge_face_index", 0)
@@ -383,6 +462,16 @@ def _build_wedge_spec(obj, props):
     }
 
 def _make_unsupported_spec(obj, props, reason):
+    """
+
+    Args:
+      obj: 
+      props: 
+      reason: 
+
+    Returns:
+
+    """
     friendly = reason
     warning = (f"{obj.name}: {friendly} — skipped during blockMesh generation.")
     pass
@@ -395,6 +484,15 @@ def _make_unsupported_spec(obj, props, reason):
     }
 
 def _build_loft_spec(obj, props):
+    """
+
+    Args:
+      obj: 
+      props: 
+
+    Returns:
+
+    """
     face_idx_bottom = getattr(props, "loft_bottom_face_index", 0)
     face_idx_top = getattr(props, "loft_top_face_index", 1)
     
@@ -417,6 +515,15 @@ def _build_loft_spec(obj, props):
     }
 
 def _extract_face_vertices_local_bmesh(obj, face_index):
+    """
+
+    Args:
+      obj: 
+      face_index: 
+
+    Returns:
+
+    """
     # pyrefly: ignore [import-outside-toplevel, missing-import]
     import bpy
     # pyrefly: ignore [missing-import]
@@ -450,10 +557,16 @@ def _extract_face_vertices_local_bmesh(obj, face_index):
     return verts_local
 
 def _normalize_winding(face_pts, sweep_vec):
-    """
-    Ensures the 4-point face is wound correctly relative to the sweep/extrusion vector.
+    """Ensures the 4-point face is wound correctly relative to the sweep/extrusion vector.
     If the face normal points against the sweep direction, reverses the points in-place
     to prevent 'inside-out' hex errors in blockMesh.
+
+    Args:
+      face_pts: 
+      sweep_vec: 
+
+    Returns:
+
     """
     if len(face_pts) != 4:
         return
@@ -496,6 +609,15 @@ def _normalize_winding(face_pts, sweep_vec):
         face_pts.reverse()
 
 def _build_extrude_spec(obj, props):
+    """
+
+    Args:
+      obj: 
+      props: 
+
+    Returns:
+
+    """
     axis = getattr(props, "extrude_axis", "Z")
     dist = getattr(props, "extrude_distance", 1.0)
     
@@ -531,8 +653,14 @@ def _build_extrude_spec(obj, props):
     }
 
 def _build_sketch_spec(obj, props):
-    """
-    Builds a spec dictionary for a sketched curve.
+    """Builds a spec dictionary for a sketched curve.
+
+    Args:
+      obj: 
+      props: 
+
+    Returns:
+
     """
     return {
         "type": "sketch",
@@ -546,6 +674,14 @@ def _build_sketch_spec(obj, props):
     }
 
 def _extract_curve_points(obj):
+    """
+
+    Args:
+      obj: 
+
+    Returns:
+
+    """
     import bpy
     depsgraph = bpy.context.evaluated_depsgraph_get()
     obj_eval = obj.evaluated_get(depsgraph)
@@ -564,6 +700,15 @@ def _extract_curve_points(obj):
     return pts
 
 def _build_revolve_spec(obj, props):
+    """
+
+    Args:
+      obj: 
+      props: 
+
+    Returns:
+
+    """
     angle_deg = getattr(props, "revolve_angle", 90.0)
     axis_str = getattr(props, "revolve_axis", "Z")
     origin = getattr(props, "revolve_origin", (0,0,0))
@@ -624,11 +769,16 @@ def _build_revolve_spec(obj, props):
 
 
 def _get_world_bounding_box(obj):
-    """
-    Returns (p_min, p_max) for a Blender object in absolute world space.
-
+    """Returns (p_min, p_max) for a Blender object in absolute world space.
+    
     CRITICAL: obj.bound_box returns bpy_prop_array items, NOT Vector objects.
     Must wrap each corner in mathutils.Vector() before matrix multiplication.
+
+    Args:
+      obj: 
+
+    Returns:
+
     """
     try:
         # pyrefly: ignore [missing-import]
@@ -659,8 +809,14 @@ def _get_world_bounding_box(obj):
 
 
 def _extract_face_vertices_world(obj, face_index):
-    """
-    Returns a list of [x, y, z] world-space coordinates for a face's vertices.
+    """Returns a list of [x, y, z] world-space coordinates for a face's vertices.
+
+    Args:
+      obj: 
+      face_index: 
+
+    Returns:
+
     """
     # pyrefly: ignore [missing-import]
     import bpy
@@ -685,8 +841,13 @@ def _extract_face_vertices_world(obj, face_index):
 
 
 def _get_world_mesh_data(obj):
-    """
-    Returns evaluated mesh vertices in world coordinates plus polygon indices.
+    """Returns evaluated mesh vertices in world coordinates plus polygon indices.
+
+    Args:
+      obj: 
+
+    Returns:
+
     """
     # pyrefly: ignore [missing-import]
     import bpy
@@ -707,8 +868,13 @@ def _get_world_mesh_data(obj):
 
 
 def _get_local_mesh_geometry(obj):
-    """
-    Returns evaluated mesh vertices in local coordinates and face normal/area data.
+    """Returns evaluated mesh vertices in local coordinates and face normal/area data.
+
+    Args:
+      obj: 
+
+    Returns:
+
     """
     # pyrefly: ignore [missing-import]
     import bpy
@@ -724,11 +890,18 @@ def _get_local_mesh_geometry(obj):
 
 
 def _infer_cylinder_local_frame(vertices, face_normals=None, face_areas=None):
-    """
-    Infer cylinder endpoints and radius point in local space.
-
+    """Infer cylinder endpoints and radius point in local space.
+    
     This avoids relying on bounding-box ties like Blender's default cylinder
     where diameter and height can both be 2 units.
+
+    Args:
+      vertices: 
+      face_normals:  (Default value = None)
+      face_areas:  (Default value = None)
+
+    Returns:
+
     """
     points = np.asarray(vertices, dtype=float)
     if len(points) == 0:
@@ -762,8 +935,14 @@ def _infer_cylinder_local_frame(vertices, face_normals=None, face_areas=None):
 
 
 def _infer_axis_from_opposite_normals(face_normals, face_areas):
-    """
-    Finds the dominant axis from the largest opposite normal pair.
+    """Finds the dominant axis from the largest opposite normal pair.
+
+    Args:
+      face_normals: 
+      face_areas: 
+
+    Returns:
+
     """
     if face_normals is None or face_areas is None:
         return None
@@ -803,8 +982,14 @@ def _infer_axis_from_opposite_normals(face_normals, face_areas):
 
 
 def _compute_polygon_area(points, faces):
-    """
-    Computes total polygon area from world-space vertices and polygon indices.
+    """Computes total polygon area from world-space vertices and polygon indices.
+
+    Args:
+      points: 
+      faces: 
+
+    Returns:
+
     """
     total_area = 0.0
     for face in faces:
@@ -819,6 +1004,14 @@ def _compute_polygon_area(points, faces):
 
 
 def _normalize_vector(vector):
+    """
+
+    Args:
+      vector: 
+
+    Returns:
+
+    """
     vec = np.asarray(vector, dtype=float)
     norm = float(np.linalg.norm(vec))
     if norm < 1e-12:
@@ -827,6 +1020,14 @@ def _normalize_vector(vector):
 
 
 def _read_cells(props):
+    """
+
+    Args:
+      props: 
+
+    Returns:
+
+    """
     raw = getattr(props, "cells", None) if props else None
     if raw and len(raw) >= 3:
         return [max(1, int(raw[i])) for i in range(3)]
@@ -834,10 +1035,26 @@ def _read_cells(props):
 
 
 def _read_patch_name(props):
+    """
+
+    Args:
+      props: 
+
+    Returns:
+
+    """
     return getattr(props, "patch_name", "defaultWall") if props else "defaultWall"
 
 
 def _read_grading(props):
+    """
+
+    Args:
+      props: 
+
+    Returns:
+
+    """
     gt = getattr(props, "grading_type", "RATIO") if props else "RATIO"
     raw_g = getattr(props, "grading", None) if props else None
     grading = [float(raw_g[i]) for i in range(3)] if raw_g and len(raw_g) >= 3 else [1.0, 1.0, 1.0]
@@ -850,7 +1067,14 @@ def _read_grading(props):
 
 
 def _read_chain_params(props):
-    """Read shape chaining parameters from object properties."""
+    """Read shape chaining parameters from object properties.
+
+    Args:
+      props: 
+
+    Returns:
+
+    """
     chain_source = getattr(props, "chain_source", "") if props else ""
     if not chain_source:
         return {}
@@ -862,14 +1086,19 @@ def _read_chain_params(props):
 
 
 def _check_unapplied_transforms(obj):
-    """
-    Checks if an object has unapplied scale.
-
+    """Checks if an object has unapplied scale.
+    
     Returns a warning string if scale != (1,1,1), else None.
     The pipeline still works correctly (we use matrix_world for all coords),
     but unapplied scale can cause confusion if the user is thinking in local
     coordinates. We warn — we NEVER auto-apply (that would break modifiers,
     constraints, and animations).
+
+    Args:
+      obj: 
+
+    Returns:
+
     """
     scale = obj.scale
     threshold = 1e-4

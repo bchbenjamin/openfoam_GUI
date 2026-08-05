@@ -9,13 +9,22 @@ the Parametric Structured Mesh Builder, set boundary conditions, and run pipelin
 import bpy
 
 class CLASSY_PT_main_panel(bpy.types.Panel):
+    """ """
     bl_label = "Classy Blocks Mesh"
     bl_idname = "CLASSY_PT_main_panel"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'ClasyMesh'
 
-    def draw(self, context):
+    def draw(self, context) -> None:
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         layout = self.layout
         scene_props = context.scene.classy_mesh_props
 

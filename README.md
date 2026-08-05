@@ -2,8 +2,12 @@
   <img src="README_images/FOSSEE.png" alt="Classy Blender Mesh Logo" width="200" />
   <h1>Classy Blender Mesh</h1>
   <p>Seamlessly bridging Blender's intuitive 3D modeling with OpenFOAM's structured hex-meshing.</p>
-</div>
 
+  [![Release](https://img.shields.io/github/v/release/bchbenjamin/classy_blender_mesh?color=blue&label=version)](https://github.com/bchbenjamin/classy_blender_mesh/releases)
+  [![Blender](https://img.shields.io/badge/Blender-4.1+-orange.svg)](https://www.blender.org/)
+  [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
+  [![License](https://img.shields.io/badge/License-GPLv3-green.svg)](LICENSE)
+</div>
 ---
 
 <div align="center">

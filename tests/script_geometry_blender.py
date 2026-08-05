@@ -10,7 +10,8 @@ if addon_dir not in sys.path:
 
 import geometry_extractor
 
-def test_extract_geometry():
+def test_extract_geometry() -> None:
+    """ """
     # 1. Clear scene
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete()

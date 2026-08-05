@@ -53,13 +53,18 @@ classes = [
 
 
 @bpy.app.handlers.persistent
-def _on_load_post(filepath):
-    """
-    Runs after any .blend file loads (including new files).
+def _on_load_post(filepath) -> None:
+    """Runs after any .blend file loads (including new files).
     Restores the last-used case directory into the scene if the scene
     has no case_path set, so the user never has to re-enter it.
     Also ensures auto-update starts off — it defaults False but existing
     userpref.blend values would override that; we force it off here.
+
+    Args:
+      filepath: 
+
+    Returns:
+
     """
     try:
         prefs = bpy.context.preferences.addons.get(__package__)
@@ -81,7 +86,8 @@ def _on_load_post(filepath):
         pass
 
 
-def register():
+def register() -> None:
+    """ """
     for cls in classes:
         bpy.utils.register_class(cls)
     bpy.types.Object.classy_block_props = bpy.props.PointerProperty(type=properties.ClassyMeshObjectProperties)
@@ -94,7 +100,8 @@ def register():
         bpy.app.handlers.load_post.append(_on_load_post)
 
 
-def unregister():
+def unregister() -> None:
+    """ """
     if _on_load_post in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(_on_load_post)
     dependencies.unregister_startup_checks()

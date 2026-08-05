@@ -11,6 +11,7 @@ import bpy
 
 
 class ClassyFacePatch(bpy.types.PropertyGroup):
+    """ """
     side_name: bpy.props.StringProperty(
         name="Side Name", 
         description="Name of the classy_blocks side (e.g., top, bottom, outer, left, right)",
@@ -33,7 +34,15 @@ class ClassyFacePatch(bpy.types.PropertyGroup):
         default="wall"
     )
 
-def update_sketch_preview(self, context):
+def update_sketch_preview(self, context) -> None:
+    """
+
+    Args:
+      context: 
+
+    Returns:
+
+    """
     obj = context.active_object
     if not (obj and obj.type == 'CURVE' and obj.get("classy_sketch")):
         return
@@ -56,6 +65,7 @@ def update_sketch_preview(self, context):
         mod.axis = self.revolve_axis
 
 class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
+    """ """
     exclude_from_mesh: bpy.props.BoolProperty(
         name="Exclude from Mesh",
         default=False,
@@ -213,6 +223,7 @@ class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
 
 
 class ClassyMeshSceneProperties(bpy.types.PropertyGroup):
+    """ """
     case_path: bpy.props.StringProperty(
         name="Case Directory", 
         default="",

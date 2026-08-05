@@ -28,6 +28,7 @@ from typing import Tuple, Optional, Dict
 # preferences.bashrc_path value from AddonPreferences.
 # -------------------------------------------------------
 def get_default_bashrc() -> str:
+    """ """
     addon_dir = os.path.dirname(os.path.abspath(__file__))
     for name in ["OpenFOAM-13", "openfoam13"]:
         local_bashrc = os.path.join(addon_dir, name, "etc", "bashrc")
@@ -39,30 +40,36 @@ DEFAULT_BASHRC = get_default_bashrc()
 
 
 def get_bashrc_path(bashrc_path: str = "") -> str:
-    """
-    Resolves the OpenFOAM bashrc path.
-
+    """Resolves the OpenFOAM bashrc path.
+    
     Priority:
       1. Explicitly passed bashrc_path (from operator calling code)
       2. DEFAULT_BASHRC module-level fallback
 
     Args:
-        bashrc_path: Path passed by the caller (usually from AddonPreferences).
+      bashrc_path: Path passed by the caller (usually from AddonPreferences).
+      bashrc_path: str:  (Default value = "")
 
     Returns:
-        The resolved bashrc path string.
+      : The resolved bashrc path string.
+
     """
     if bashrc_path and bashrc_path.strip():
         return os.path.expanduser(bashrc_path.strip())
     return DEFAULT_BASHRC
 
 def get_openfoam_environment(bashrc_path: str) -> Dict[str, str]:
-    """
-    Sources the OpenFOAM bashrc and returns the resulting environment as a dict.
-
+    """Sources the OpenFOAM bashrc and returns the resulting environment as a dict.
+    
     This is required because Python subprocesses don't inherit shell-sourced envs.
     We achieve this by running: bash -c 'source <bashrc> && env'
     and parsing the output line-by-line into a dict.
+
+    Args:
+      bashrc_path: str: 
+
+    Returns:
+
     """
     if not os.path.exists(bashrc_path):
         raise FileNotFoundError(
@@ -91,12 +98,18 @@ def get_openfoam_environment(bashrc_path: str) -> Dict[str, str]:
     return env
 
 def run_blockmesh(case_path: str, openfoam_bashrc: str = "") -> Tuple[int, str, str]:
-    """
-    Runs: blockMesh -case <case_path>
+    """Runs: blockMesh -case <case_path>
     Works identically in OpenFOAM 13 (blockMesh command is unchanged).
-
+    
     Returns: (return_code, stdout, stderr)
     A return_code of 0 means success.
+
+    Args:
+      case_path: str: 
+      openfoam_bashrc: str:  (Default value = "")
+
+    Returns:
+
     """
     resolved_bashrc = get_bashrc_path(openfoam_bashrc)
     env = get_openfoam_environment(resolved_bashrc)
@@ -120,16 +133,22 @@ def run_blockmesh(case_path: str, openfoam_bashrc: str = "") -> Tuple[int, str, 
     return result.returncode, result.stdout, result.stderr
 
 def run_foam_to_vtk(case_path: str, openfoam_bashrc: str = "") -> Tuple[int, str, str]:
-    """
-    Runs: foamToVTK -case <case_path>
-
-NOTE for OpenFOAM 13: foamToVTK still works and is the method used here
+    """Runs: foamToVTK -case <case_path>
+    
+    NOTE for OpenFOAM 13: foamToVTK still works and is the method used here
     for the Blender re-import workflow. Alternatively, you can create an empty
     'case.foam' file in the case directory and open it directly in ParaView
     without needing foamToVTK at all:
         touch ~/foam_cases/cube_test/cube_test.foam
-
+    
     Returns: (return_code, stdout, stderr)
+
+    Args:
+      case_path: str: 
+      openfoam_bashrc: str:  (Default value = "")
+
+    Returns:
+
     """
     resolved_bashrc = get_bashrc_path(openfoam_bashrc)
     env = get_openfoam_environment(resolved_bashrc)
@@ -149,14 +168,19 @@ NOTE for OpenFOAM 13: foamToVTK still works and is the method used here
     return result.returncode, result.stdout, result.stderr
 
 def parse_mesh_quality(blockmesh_output: str) -> Dict[str, Optional[float]]:
-    """
-    Parses blockMesh stdout/stderr for mesh quality metrics.
-
+    """Parses blockMesh stdout/stderr for mesh quality metrics.
+    
     blockMesh reports these at the end of a successful run:
       Max non-orthogonality = XX.X
       Max skewness = X.X
-
+    
     Good mesh: non-orthogonality < 70, skewness < 4.
+
+    Args:
+      blockmesh_output: str: 
+
+    Returns:
+
     """
     quality = {"non_orthogonality": None, "skewness": None}
 

@@ -143,24 +143,26 @@ def setup_incompressible_case(
     write_interval: int = 20,
     inlet_velocity: List[float] = [1.0, 0.0, 0.0],
 ) -> None:
-    """
-    Sets up an OpenFOAM 13 incompressible flow case.
-
+    """Sets up an OpenFOAM 13 incompressible flow case.
+    
     For OpenFOAM 13:
     - Transient (previously icoFoam)    → solver module: 'incompressibleFluid'
     - Steady-state (previously simpleFoam) → solver module: 'incompressibleFluid'
       with a 'steady' ddtScheme in fvSchemes
 
     Args:
-        case_path:      Path to the OpenFOAM case directory.
-        patch_names:    List of boundary patch names from your mesh
-                        (e.g. ["inlet", "outlet", "wall"]).
-        transient:      True = time-marching (formerly icoFoam),
-                        False = steady-state (formerly simpleFoam).
-        end_time:       Simulation end time in seconds.
-        delta_t:        Time step size in seconds.
+        case_path: Path to the OpenFOAM case directory.
+        patch_names: List of boundary patch names from your mesh
+            (e.g. ["inlet", "outlet", "wall"]).
+        transient: True = time-marching (formerly icoFoam),
+            False = steady-state (formerly simpleFoam).
+        end_time: Simulation end time in seconds.
+        delta_t: Time step size in seconds.
         write_interval: Write results every N time steps.
         inlet_velocity: Inlet velocity vector [Ux, Uy, Uz] in m/s.
+
+    Returns:
+        None
     """
     case_path = os.path.expanduser(case_path)
     system_dir = os.path.join(case_path, "system")
@@ -190,20 +192,34 @@ def setup_incompressible_case(
     pass
 
 def _write(path: str, content: str) -> None:
-    """Writes content to a file, creating parent directories as needed."""
+    """Writes content to a file, creating parent directories as needed.
+
+    Args:
+      path: str: 
+      content: str: 
+
+    Returns:
+
+    """
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
         f.write(content)
     pass
 
 def _build_U(patch_names: List[str], inlet_velocity: List[float]) -> str:
-    """
-    Builds the 0/U boundary condition file.
+    """Builds the 0/U boundary condition file.
     Heuristic patch classification by name:
       - 'inlet*'    → fixedValue (velocity inlet)
       - 'outlet*'   → zeroGradient (fully-developed outflow)
       - 'symmetry*' → symmetryPlane
       - anything else → noSlip wall
+
+    Args:
+      patch_names: List[str]: 
+      inlet_velocity: List[float]: 
+
+    Returns:
+
     """
     ux, uy, uz = inlet_velocity
     bcs = ""
@@ -226,11 +242,16 @@ def _build_U(patch_names: List[str], inlet_velocity: List[float]) -> str:
     )
 
 def _build_p(patch_names: List[str]) -> str:
-    """
-    Builds the 0/p boundary condition file.
+    """Builds the 0/p boundary condition file.
     Heuristic classification:
       - 'outlet*' → fixedValue 0 (pressure outlet)
       - anything else → zeroGradient
+
+    Args:
+      patch_names: List[str]: 
+
+    Returns:
+
     """
     bcs = ""
     for p in patch_names:

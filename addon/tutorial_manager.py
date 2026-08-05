@@ -14,6 +14,14 @@ from pathlib import Path
 _tutorials_cache = {}
 
 def get_tutorial_items(self, context):
+    """
+
+    Args:
+      context: 
+
+    Returns:
+
+    """
     scene = context.scene
     # Gracefully handle if foam_dirs isn't registered yet
     if not hasattr(scene, "foam_dirs") or not scene.foam_dirs.foam_tutorials_dir:
@@ -55,6 +63,7 @@ def get_tutorial_items(self, context):
     return items
 
 class TutorialManagerProperties(bpy.types.PropertyGroup):
+    """ """
     available_tutorials: bpy.props.EnumProperty(
         name="Select Tutorial",
         description="Choose an OpenFOAM tutorial to copy",
@@ -67,6 +76,7 @@ class TutorialManagerProperties(bpy.types.PropertyGroup):
     )
 
 class CLASSY_OT_search_tutorials(bpy.types.Operator):
+    """ """
     bl_idname = "mesh.classy_search_tutorials"
     bl_label = "Search Tutorials"
     bl_property = "tutorial_enum"
@@ -77,20 +87,46 @@ class CLASSY_OT_search_tutorials(bpy.types.Operator):
     )
     
     def invoke(self, context, event):
+        """
+
+        Args:
+          context: 
+          event: 
+
+        Returns:
+
+        """
         context.window_manager.invoke_search_popup(self)
         return {'RUNNING_MODAL'}
         
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         context.scene.tutorial_manager.available_tutorials = self.tutorial_enum
         return {'FINISHED'}
 
 class CLASSY_OT_copy_tutorial(bpy.types.Operator):
+    """ """
     bl_idname = "mesh.classy_copy_tutorial"
     bl_label = "Copy Tutorial Case"
     bl_description = "Copy the selected tutorial to your OpenFOAM run directory"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         scene = context.scene
         tut_props = scene.tutorial_manager
         
@@ -137,6 +173,7 @@ class CLASSY_OT_copy_tutorial(bpy.types.Operator):
         return {'FINISHED'}
 
 class CLASSY_OT_confirm_case_path(bpy.types.Operator):
+    """ """
     bl_idname = "classy.confirm_case_path"
     bl_label = "Set as Active Case?"
     bl_description = "Set the newly copied tutorial as the active case directory"
@@ -145,14 +182,39 @@ class CLASSY_OT_confirm_case_path(bpy.types.Operator):
     dest_path: bpy.props.StringProperty()
     
     def invoke(self, context, event):
+        """
+
+        Args:
+          context: 
+          event: 
+
+        Returns:
+
+        """
         return context.window_manager.invoke_props_dialog(self, width=400)
         
-    def draw(self, context):
+    def draw(self, context) -> None:
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         layout = self.layout
         layout.label(text="Tutorial copied successfully!", icon='INFO')
         layout.label(text="Do you want to set this as the active case directory?")
         
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         if hasattr(context.scene, "classy_mesh_props"):
             context.scene.classy_mesh_props.case_path = self.dest_path
         if hasattr(context, "area") and context.area:
@@ -160,13 +222,22 @@ class CLASSY_OT_confirm_case_path(bpy.types.Operator):
         return {'FINISHED'}
 
 class CLASSY_PT_tutorial_manager(bpy.types.Panel):
+    """ """
     bl_label = "Tutorial Manager"
     bl_idname = "CLASSY_PT_tutorial_manager"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'Classy FOAM'
     
-    def draw(self, context):
+    def draw(self, context) -> None:
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         layout = self.layout
         scene = context.scene
         
@@ -185,14 +256,16 @@ class CLASSY_PT_tutorial_manager(bpy.types.Panel):
         layout.prop(tut_props, "new_case_name")
         layout.operator("mesh.classy_copy_tutorial", text="Copy to Run Directory", icon='DUPLICATE')
 
-def register():
+def register() -> None:
+    """ """
     bpy.utils.register_class(TutorialManagerProperties)
     bpy.types.Scene.tutorial_manager = bpy.props.PointerProperty(type=TutorialManagerProperties)
     bpy.utils.register_class(CLASSY_OT_search_tutorials)
     bpy.utils.register_class(CLASSY_OT_copy_tutorial)
     bpy.utils.register_class(CLASSY_PT_tutorial_manager)
 
-def unregister():
+def unregister() -> None:
+    """ """
     bpy.utils.unregister_class(CLASSY_PT_tutorial_manager)
     bpy.utils.unregister_class(CLASSY_OT_copy_tutorial)
     bpy.utils.unregister_class(CLASSY_OT_search_tutorials)

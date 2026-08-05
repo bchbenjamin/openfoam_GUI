@@ -35,13 +35,21 @@ class CLASSY_OT_add_sketch_point(bpy.types.Operator):
         description="Select which plane to draw the sketch on (used as fallback when not clicking on geometry)"
     )
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._points = []
         self._mouse_pos = (0, 0)
         self._draw_handle = None
         self._shader = gpu.shader.from_builtin('UNIFORM_COLOR')
 
-    def _cleanup(self, context):
+    def _cleanup(self, context) -> None:
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         if self._draw_handle is not None:
             try:
                 bpy.types.SpaceView3D.draw_handler_remove(self._draw_handle, 'WINDOW')
@@ -54,7 +62,15 @@ class CLASSY_OT_add_sketch_point(bpy.types.Operator):
         context.area.tag_redraw()
 
     def _get_3d_location(self, context, event):
-        """Raycast into the scene, fallback to Z=0 plane."""
+        """Raycast into the scene, fallback to Z=0 plane.
+
+        Args:
+          context: 
+          event: 
+
+        Returns:
+
+        """
         # Convert raw window coordinates into region coordinates safely
         coord = (
             event.mouse_x - self._region.x,
@@ -97,6 +113,15 @@ class CLASSY_OT_add_sketch_point(bpy.types.Operator):
         return pt
 
     def modal(self, context, event):
+        """
+
+        Args:
+          context: 
+          event: 
+
+        Returns:
+
+        """
         context.area.tag_redraw()
 
         try:
@@ -127,7 +152,15 @@ class CLASSY_OT_add_sketch_point(bpy.types.Operator):
 
         return {'RUNNING_MODAL'}
 
-    def _create_curve(self, context):
+    def _create_curve(self, context) -> None:
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         curve_data = bpy.data.curves.new(name="ClassySketch", type='CURVE')
         curve_data.dimensions = '3D'
         
@@ -169,6 +202,15 @@ class CLASSY_OT_add_sketch_point(bpy.types.Operator):
         bpy.ops.ed.undo_push(message="Add Classy Sketch")
 
     def invoke(self, context, event):
+        """
+
+        Args:
+          context: 
+          event: 
+
+        Returns:
+
+        """
         if context.area.type == 'VIEW_3D':
             self._region = next((r for r in context.area.regions if r.type == 'WINDOW'), context.region)
             self._rv3d = context.space_data.region_3d
@@ -187,7 +229,15 @@ class CLASSY_OT_add_sketch_point(bpy.types.Operator):
             self.report({'WARNING'}, "View3D not found")
             return {'CANCELLED'}
 
-    def draw_callback_3d(self, context):
+    def draw_callback_3d(self, context) -> None:
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         gpu.state.blend_set('ALPHA')
         gpu.state.line_width_set(3.0)
         
@@ -209,7 +259,8 @@ class CLASSY_OT_add_sketch_point(bpy.types.Operator):
             
         gpu.state.blend_set('NONE')
 
-def unregister_handlers():
+def unregister_handlers() -> None:
+    """ """
     for handler in _active_draw_handlers:
         try:
             bpy.types.SpaceView3D.draw_handler_remove(handler, 'WINDOW')

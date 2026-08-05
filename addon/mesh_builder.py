@@ -51,13 +51,20 @@ from typing import Dict, Any
 
 
 def _apply_chops(block, spec: Dict[str, Any]) -> None:
-    """
-    Applies cell chopping (count + grading) to a block in all 3 axes.
-
+    """Applies cell chopping (count + grading) to a block in all 3 axes.
+    
     Dispatches by grading_type:
       - RATIO:      use c2c_expansion from spec["grading"]
       - START_SIZE:  use start_size (first cell width)
       - SYMMETRIC:   use start_size + end_size
+
+    Args:
+      block: 
+      spec: Dict[str: 
+      Any]: 
+
+    Returns:
+
     """
     grading_type = spec.get("grading_type", "RATIO")
     cells = spec["cells"]
@@ -79,8 +86,16 @@ def _apply_chops(block, spec: Dict[str, Any]) -> None:
 
 
 def _apply_round_chops(shape, spec: Dict[str, Any], axial_cells: int | None = None) -> None:
-    """
-    Applies chops to round shapes that expose radial/tangential/axial helpers.
+    """Applies chops to round shapes that expose radial/tangential/axial helpers.
+
+    Args:
+      shape: 
+      spec: Dict[str: 
+      Any]: 
+      axial_cells: int | None:  (Default value = None)
+
+    Returns:
+
     """
     grading_type = spec.get("grading_type", "RATIO")
     cells = spec["cells"]
@@ -113,8 +128,16 @@ def _apply_round_chops(shape, spec: Dict[str, Any], axial_cells: int | None = No
 
 
 
-def _apply_face_patches(shape, spec):
-    """Applies specific boundary conditions per face."""
+def _apply_face_patches(shape, spec) -> None:
+    """Applies specific boundary conditions per face.
+
+    Args:
+      shape: 
+      spec: 
+
+    Returns:
+
+    """
     patches = spec.get("face_patches", [])
     for p in patches:
         side_name = p.get("side_name")
@@ -126,11 +149,10 @@ def _apply_face_patches(shape, spec):
                 pass
 
 
-def _apply_stl_projections(shape, mesh_obj, spec):
-    """
-    Apply STL face projections to a shape using classy_blocks' native
+def _apply_stl_projections(shape, mesh_obj, spec) -> None:
+    """Apply STL face projections to a shape using classy_blocks' native
     project_side() + add_geometry() mechanism.
-
+    
     NATIVE VS FALLBACK:
         This uses OpenFOAM's searchableSurface (triSurfaceMesh) for projection,
         which is the preferred approach because blockMesh projects ALL mesh
@@ -138,14 +160,17 @@ def _apply_stl_projections(shape, mesh_obj, spec):
         grading and curvature interpolation, producing much better terrain
         conformance than the Python-side pre-warping fallback in
         stl_projector.py.
-
+    
     The 'stl_projections' key in the spec dict maps face names to STL
     filenames: {"top": "terrain.stl", "bottom": "ground.stl"}.
 
     Args:
-        shape: The classy_blocks shape object (Box, Cylinder, Extrude, etc.).
-        mesh_obj: The cb.Mesh object (needed for geometry registration).
-        spec: Block specification dict.
+      shape: The classy_blocks shape object (Box, Cylinder, Extrude, etc.).
+      mesh_obj: The cb.Mesh object (needed for geometry registration).
+      spec: Block specification dict.
+
+    Returns:
+
     """
     if not hasattr(shape, "project_side"):
         return
@@ -158,13 +183,19 @@ def _apply_stl_projections(shape, mesh_obj, spec):
 
 
 def _register_geometry(mesh: cb.Mesh, stl_name: str) -> None:
-    """
-    Registers an STL geometry in the mesh's geometry section.
-
+    """Registers an STL geometry in the mesh's geometry section.
+    
     This is REQUIRED for any face projection — without it, blockMesh
     will crash with "Cannot find surface ... in geometry".
-
+    
     add_geometry signature: dict[str, list[str]]
+
+    Args:
+      mesh: cb.Mesh: 
+      stl_name: str: 
+
+    Returns:
+
     """
     mesh.add_geometry({
         stl_name: [
@@ -175,7 +206,16 @@ def _register_geometry(mesh: cb.Mesh, stl_name: str) -> None:
     pass
 
 
-def _apply_transform(shape, spec):
+def _apply_transform(shape, spec) -> None:
+    """
+
+    Args:
+      shape: 
+      spec: 
+
+    Returns:
+
+    """
     t = spec.get("transform")
     if not t:
         return
@@ -185,12 +225,19 @@ def _apply_transform(shape, spec):
     shape.translate(t["translate"])
 
 def _build_box(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
-    """
-    Builds a Box block with optional terrain STL projection.
-
+    """Builds a Box block with optional terrain STL projection.
+    
     Auto-detection now routes cylinders/spheres to their native cb classes,
     so this function no longer handles self-projection. It only handles
     user-specified single-face terrain projection.
+
+    Args:
+      mesh: cb.Mesh: 
+      spec: Dict[str: 
+      Any]: 
+
+    Returns:
+
     """
     pass
     box = cb.Box(spec["p_min"], spec["p_max"])
@@ -206,15 +253,22 @@ def _build_box(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
 
 
 def _build_cylinder(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
-    """
-    Builds a Cylinder block using classy_blocks native cb.Cylinder.
-
+    """Builds a Cylinder block using classy_blocks native cb.Cylinder.
+    
     cb.Cylinder(axis_point_1, axis_point_2, radius_point_1):
       - axis_point_1, axis_point_2: endpoints of the cylinder central axis
       - radius_point_1: a point ON the cylinder surface at the start end
-
+    
     cb.Cylinder generates a proper O-grid (12 hex blocks) — no STL projection
     needed. The output mesh is a true cylinder, not a projected bounding box.
+
+    Args:
+      mesh: cb.Mesh: 
+      spec: Dict[str: 
+      Any]: 
+
+    Returns:
+
     """
     axis_pt1 = spec["axis_pt1"]
     axis_pt2 = spec["axis_pt2"]
@@ -233,11 +287,18 @@ def _build_cylinder(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
 
 
 def _build_sphere(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
-    """
-    Builds a full sphere from two hemispheres.
-
+    """Builds a full sphere from two hemispheres.
+    
     The split axis comes from the spec (derived from the object's world
     rotation). Falls back to [0,0,1] for backwards compatibility.
+
+    Args:
+      mesh: cb.Mesh: 
+      spec: Dict[str: 
+      Any]: 
+
+    Returns:
+
     """
     center = spec["center"]
     radius_point = spec["radius_point"]
@@ -249,8 +310,10 @@ def _build_sphere(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
     shared_label = f"sphere_{spec.get('name', 'obj')}"
     
     class SharedHemisphere(cb.Hemisphere):
+        """ """
         @property
         def geometry_label(self):
+            """ """
             return shared_label
 
     upper = SharedHemisphere(center, radius_point, split)
@@ -263,8 +326,15 @@ def _build_sphere(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
 
 
 def _build_disk(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
-    """
-    Builds a thin structured disk for planar circle-like inputs.
+    """Builds a thin structured disk for planar circle-like inputs.
+
+    Args:
+      mesh: cb.Mesh: 
+      spec: Dict[str: 
+      Any]: 
+
+    Returns:
+
     """
     center = spec["center"]
     radius_point = spec["radius_point"]
@@ -285,16 +355,33 @@ def _build_disk(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
 
 
 def _build_unsupported(_mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
+    """
+
+    Args:
+      _mesh: cb.Mesh: 
+      spec: Dict[str: 
+      Any]: 
+
+    Returns:
+
+    """
     pass
 
 
 def _build_extrude(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
-    """
-    Builds an Extrude block from a quad face + extrusion vector.
-
+    """Builds an Extrude block from a quad face + extrusion vector.
+    
     cb.Extrude(cb.Face(4pts), extrude_vector):
       face — a cb.Face wrapping 4 [x,y,z] points
       extrude_vector — [dx, dy, dz]
+
+    Args:
+      mesh: cb.Mesh: 
+      spec: Dict[str: 
+      Any]: 
+
+    Returns:
+
     """
     face_pts = spec["face"]
     vector = spec["extrude_vector"]
@@ -310,11 +397,18 @@ def _build_extrude(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
 
 
 def _build_revolve(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
-    """
-    Builds a Revolve block from a quad face, angle, axis, and origin.
-
+    """Builds a Revolve block from a quad face, angle, axis, and origin.
+    
     cb.Revolve(cb.Face(4pts), angle_radians, axis_vector, origin_point):
       angle is in RADIANS — we convert from degrees here.
+
+    Args:
+      mesh: cb.Mesh: 
+      spec: Dict[str: 
+      Any]: 
+
+    Returns:
+
     """
     face_pts = spec["face"]
     angle_rad = math.radians(spec["angle_deg"])
@@ -332,13 +426,20 @@ def _build_revolve(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
 
 
 def _build_frustum(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
-    """
-    Builds a Frustum (truncated cone) block.
-
+    """Builds a Frustum (truncated cone) block.
+    
     cb.Frustum(axis_point_1, axis_point_2, radius_point_1, radius_2):
       - axis_point_1, axis_point_2: endpoints of the frustum axis
       - radius_point_1: a point ON the surface at axis_pt1 end
       - radius_2: scalar end radius (NOT a point!)
+
+    Args:
+      mesh: cb.Mesh: 
+      spec: Dict[str: 
+      Any]: 
+
+    Returns:
+
     """
     axis_pt1 = spec["axis_pt1"]
     axis_pt2 = spec["axis_pt2"]
@@ -362,11 +463,18 @@ def _build_frustum(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
 
 
 def _build_loft(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
-    """
-    Builds a Loft block connecting two quad faces (bottom → top).
-
+    """Builds a Loft block connecting two quad faces (bottom → top).
+    
     cb.Loft(bottom_face, top_face):
       Both faces must be cb.Face objects wrapping 4 [x,y,z] points.
+
+    Args:
+      mesh: cb.Mesh: 
+      spec: Dict[str: 
+      Any]: 
+
+    Returns:
+
     """
     bottom_pts = spec["bottom_face"]
     top_pts = spec["top_face"]
@@ -383,15 +491,22 @@ def _build_loft(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
 
 
 def _build_wedge(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
-    """
-    Builds a Wedge block for axisymmetric 2D cases.
-
+    """Builds a Wedge block for axisymmetric 2D cases.
+    
     cb.Wedge(face, angle):
       - face: cb.Face wrapping 4 [x,y,z] points
       - angle: total wedge angle in radians (default ~2 degrees)
-
+    
     The wedge revolves around the x-axis symmetrically by ±angle/2.
     Used for axisymmetric CFD (pipe flow, nozzles, etc.).
+
+    Args:
+      mesh: cb.Mesh: 
+      spec: Dict[str: 
+      Any]: 
+
+    Returns:
+
     """
     face_pts = spec["face"]
     angle_deg = spec.get("angle_deg", 2.0)
@@ -415,6 +530,16 @@ def _build_wedge(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
 # ─────────────────────── DISPATCHER ───────────────────────
 
 def _build_extruded_ring(mesh: cb.Mesh, spec: Dict[str, Any]) -> None:
+    """
+
+    Args:
+      mesh: cb.Mesh: 
+      spec: Dict[str: 
+      Any]: 
+
+    Returns:
+
+    """
     axis_pt1 = spec["axis_pt1"]
     axis_pt2 = spec["axis_pt2"]
     outer_radius_pt = spec["outer_radius_pt"]
@@ -443,13 +568,20 @@ _BUILDERS = {
 
 
 def build_block(mesh: cb.Mesh, spec: Dict[str, Any]) -> bool:
-    """
-    Dispatches block building by type.
-
+    """Dispatches block building by type.
+    
     Supported types: box, cylinder, frustum, sphere, disk, extrude,
                      revolve, loft, wedge.
-
+    
     Returns True if a block was actually built, False if skipped.
+
+    Args:
+      mesh: cb.Mesh: 
+      spec: Dict[str: 
+      Any]: 
+
+    Returns:
+
     """
     block_type = spec.get("type", "box")
     builder = _BUILDERS.get(block_type)
@@ -469,18 +601,22 @@ def build_block(mesh: cb.Mesh, spec: Dict[str, Any]) -> bool:
 
 def _build_chained_block(mesh: cb.Mesh, spec: Dict[str, Any],
                          source_shape) -> bool:
-    """
-    Builds a block by chaining it from an existing round shape.
-
+    """Builds a block by chaining it from an existing round shape.
+    
     Uses the .chain() classmethod on Cylinder/Frustum to extend a pipe
     from the end face of the source shape.
 
     Args:
-        mesh: The cb.Mesh to add the shape to.
-        spec: Block spec dict with chain_source, chain_length, chain_radius_2.
-        source_shape: The classy_blocks shape object to chain from.
-
+      mesh: The cb.Mesh to add the shape to.
+      spec: Block spec dict with chain_source, chain_length, chain_radius_2.
+      source_shape: The classy_blocks shape object to chain from.
     Returns True if successfully chained.
+      mesh: cb.Mesh: 
+      spec: Dict[str: 
+      Any]: 
+
+    Returns:
+
     """
     chain_length = spec.get("chain_length", 1.0)
     chain_radius_2 = spec.get("chain_radius_2", 0.0)
@@ -512,12 +648,19 @@ def _build_chained_block(mesh: cb.Mesh, spec: Dict[str, Any],
 # ─────────────────────── MAIN ENTRY POINT ───────────────────────
 
 def build_from_spec(spec: Dict[str, Any], output_path: str) -> None:
-    """
-    Takes a geometry spec dict and writes a blockMeshDict to output_path.
-
+    """Takes a geometry spec dict and writes a blockMeshDict to output_path.
+    
     Two-pass strategy for shape chaining:
       Pass 1: Build all non-chained blocks, store their cb objects by name.
       Pass 2: Build chained blocks using their source's cb object.
+
+    Args:
+      spec: Dict[str: 
+      Any]: 
+      output_path: str: 
+
+    Returns:
+
     """
     output_dir = os.path.dirname(output_path)
     if not os.path.isdir(output_dir):

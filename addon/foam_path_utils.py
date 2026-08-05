@@ -29,9 +29,8 @@ from typing import Dict, List
 
 
 def resolve_case_path(case_path: str) -> str:
-    """
-    Normalizes an OpenFOAM case path to a canonical absolute form.
-
+    """Normalizes an OpenFOAM case path to a canonical absolute form.
+    
     Applies in order:
       1. Strip leading/trailing whitespace
       2. Expand ~ to the user's home directory
@@ -40,11 +39,13 @@ def resolve_case_path(case_path: str) -> str:
       5. Convert to absolute path
 
     Args:
-        case_path: Raw path string from user input or Blender property.
+      case_path: Raw path string from user input or Blender property.
+      case_path: str: 
 
     Returns:
-        Cleaned, absolute, symlink-resolved path string.
-        Returns empty string if input is empty/whitespace-only.
+      : Cleaned, absolute, symlink-resolved path string.
+      Returns empty string if input is empty/whitespace-only.
+
     """
     if not case_path or not case_path.strip():
         return ""
@@ -56,29 +57,30 @@ def resolve_case_path(case_path: str) -> str:
 
 
 def validate_case_path(case_path: str, foam_run_dir: str = "") -> Dict:
-    """
-    Validates a case path against the OpenFOAM environment context.
-
+    """Validates a case path against the OpenFOAM environment context.
+    
     Checks performed:
       1. Path is non-empty after normalization.
       2. Directory exists (or its parent is writable for new cases).
       3. Write permission is verified on the target or nearest ancestor.
       4. If foam_run_dir is set, checks whether case_path is a subdirectory.
-
+    
     All checks produce warnings, never raise exceptions. The caller decides
     whether to block or allow execution based on the returned flags.
 
     Args:
-        case_path:    Raw case directory path (will be resolved internally).
-        foam_run_dir: The configured $FOAM_RUN path (may be empty if not set).
+      case_path: Raw case directory path (will be resolved internally).
+      foam_run_dir: The configured $FOAM_RUN path (may be empty if not set).
+      case_path: str: 
+      foam_run_dir: str:  (Default value = "")
 
     Returns:
-        Dict with keys:
-          - valid (bool): True if the path is usable for file operations.
-          - is_inside_foam_run (bool): True if case_path is under foam_run_dir.
-          - writable (bool): True if the target or ancestor is writable.
-          - warnings (list[str]): Human-readable warning strings.
-          - resolved_path (str): The normalized, symlink-resolved path.
+      Dict with keys: - valid (bool): True if the path is usable for file operations.
+      - is_inside_foam_run (bool): True if case_path is under foam_run_dir.
+      - writable (bool): True if the target or ancestor is writable.
+      - warnings (list[str]): Human-readable warning strings.
+      - resolved_path (str): The normalized, symlink-resolved path.
+
     """
     result = {
         "valid": False,
@@ -134,17 +136,18 @@ def validate_case_path(case_path: str, foam_run_dir: str = "") -> Dict:
 
 
 def is_valid_openfoam_case(path: str) -> bool:
-    """
-    Checks if a directory looks like a valid OpenFOAM case.
-
+    """Checks if a directory looks like a valid OpenFOAM case.
+    
     A valid case has a system/ subdirectory (the minimum required structure
     for blockMesh to find controlDict and blockMeshDict).
 
     Args:
-        path: Absolute path to check.
+      path: Absolute path to check.
+      path: str: 
 
     Returns:
-        True if the directory exists and contains a system/ subdirectory.
+      : True if the directory exists and contains a system/ subdirectory.
+
     """
     resolved = resolve_case_path(path)
     if not resolved:
@@ -154,19 +157,21 @@ def is_valid_openfoam_case(path: str) -> bool:
 
 
 def _is_subdirectory(child: str, parent: str) -> bool:
-    """
-    Check if child is a subdirectory of (or equal to) parent.
-
+    """Check if child is a subdirectory of (or equal to) parent.
+    
     Both paths must already be resolved via os.path.realpath() to handle
     symlinks correctly. Uses os.path.commonpath() for robust comparison
     instead of string prefix matching.
 
     Args:
-        child:  Resolved absolute path of the candidate child.
-        parent: Resolved absolute path of the candidate parent.
+      child: Resolved absolute path of the candidate child.
+      parent: Resolved absolute path of the candidate parent.
+      child: str: 
+      parent: str: 
 
     Returns:
-        True if child is inside parent (or is parent itself).
+      : True if child is inside parent (or is parent itself).
+
     """
     try:
         # commonpath returns the longest common sub-path
@@ -178,19 +183,20 @@ def _is_subdirectory(child: str, parent: str) -> bool:
 
 
 def _check_write_access(path: str) -> bool:
-    """
-    Verify write access for a path, walking up to the nearest existing ancestor.
-
+    """Verify write access for a path, walking up to the nearest existing ancestor.
+    
     If the target directory exists, checks os.access(path, os.W_OK) directly.
     If it doesn't exist yet, walks up the directory tree to find the nearest
     existing parent and checks write access there (since os.makedirs would
     need to create the missing segments).
 
     Args:
-        path: Absolute path to check.
+      path: Absolute path to check.
+      path: str: 
 
     Returns:
-        True if the user has write access to the target or its nearest ancestor.
+      : True if the user has write access to the target or its nearest ancestor.
+
     """
     check_path = path
     while check_path and check_path != os.path.dirname(check_path):

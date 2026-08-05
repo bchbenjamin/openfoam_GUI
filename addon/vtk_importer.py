@@ -28,19 +28,19 @@ except ImportError:
 
 
 def find_vtk_files(case_path):
-    """
-    Searches for VTK files in the case directory's VTK/ subfolder.
-
+    """Searches for VTK files in the case directory's VTK/ subfolder.
+    
     foamToVTK creates files like:
       case_dir/VTK/case_name_0.vtk
       or case_dir/VTK/internal.vtu
 
     Args:
-        case_path: Path to the OpenFOAM case directory.
+      case_path: Path to the OpenFOAM case directory.
 
     Returns:
-        list: Sorted list of absolute paths to VTK files found.
-              Empty list if no files found.
+      list: Sorted list of absolute paths to VTK files found.
+      Empty list if no files found.
+
     """
     vtk_patterns = [
         os.path.join(case_path, "VTK", "*.vtu"),
@@ -55,19 +55,19 @@ def find_vtk_files(case_path):
 
 
 def load_vtk_as_blender_mesh(vtk_path, mesh_name="BlockMesh_Result"):
-    """
-    Reads a VTK file with PyVista and creates a Blender mesh object.
-
+    """Reads a VTK file with PyVista and creates a Blender mesh object.
+    
     The resulting object appears in Blender's viewport as a mesh that
     the user can inspect, rotate, and examine in edit mode to verify
     the block topology.
 
     Args:
-        vtk_path: Absolute path to a .vtk or .vtu file.
-        mesh_name: Name for the created Blender object (default: "BlockMesh_Result").
+      vtk_path: Absolute path to a .vtk or .vtu file.
+      mesh_name: Name for the created Blender object (default: "BlockMesh_Result").
 
     Returns:
-        The created Blender object, or None on failure.
+      : The created Blender object, or None on failure.
+
     """
     # 1. Load VTK file with PyVista
     try:
@@ -149,19 +149,19 @@ def load_vtk_as_blender_mesh(vtk_path, mesh_name="BlockMesh_Result"):
 
 
 def _parse_pyvista_faces(pv_faces):
-    """
-    Converts PyVista's face array format to Blender's face format.
-
+    """Converts PyVista's face array format to Blender's face format.
+    
     PyVista stores faces as a flat array: [n_verts, v0, v1, ..., n_verts, v0, v1, ...]
     Blender's from_pydata expects a list of tuples: [(v0, v1, v2, v3), ...]
-
+    
     Handles both triangles (n=3) and quads (n=4), as well as any polygon.
 
     Args:
-        pv_faces: PyVista face array (numpy array or list).
+      pv_faces: PyVista face array (numpy array or list).
 
     Returns:
-        list: List of face tuples, e.g. [(0, 1, 2, 3), (4, 5, 6, 7), ...]
+      list: List of face tuples, e.g. [(0, 1, 2, 3), (4, 5, 6, 7), ...]
+
     """
     faces = []
     i = 0
@@ -180,13 +180,15 @@ def _parse_pyvista_faces(pv_faces):
     return faces
 
 
-def _remove_existing_objects_with_prefix(prefix):
-    """
-    Removes all existing Blender objects and their mesh data whose names start
+def _remove_existing_objects_with_prefix(prefix) -> None:
+    """Removes all existing Blender objects and their mesh data whose names start
     with the given prefix. Used to clean up before re-importing the mesh.
 
     Args:
-        prefix: Name prefix of the Blender objects to remove.
+      prefix: Name prefix of the Blender objects to remove.
+
+    Returns:
+
     """
     objs_to_remove = [obj for obj in bpy.data.objects if obj.name.startswith(prefix)]
     

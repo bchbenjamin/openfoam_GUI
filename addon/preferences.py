@@ -10,6 +10,7 @@ import bpy
 import os
 
 def get_default_bashrc():
+    """ """
     # Check if there is a local OpenFOAM-13 symlink/directory inside the addon
     addon_dir = os.path.dirname(os.path.abspath(__file__))
     for name in ["OpenFOAM-13", "openfoam13"]:
@@ -21,6 +22,7 @@ def get_default_bashrc():
     return "/opt/openfoam13/etc/bashrc"
 
 class ClassyBlocksPreferences(bpy.types.AddonPreferences):
+    """ """
     bl_idname = __package__
 
     bashrc_path: bpy.props.StringProperty(
@@ -58,7 +60,15 @@ class ClassyBlocksPreferences(bpy.types.AddonPreferences):
         description="Wait time before auto-running meshing pipeline"
     )
 
-    def draw(self, context):
+    def draw(self, context) -> None:
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         layout = self.layout
         layout.label(text="System Settings")
         layout.prop(self, "bashrc_path")

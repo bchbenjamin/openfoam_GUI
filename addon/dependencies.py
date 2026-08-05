@@ -24,7 +24,14 @@ def check_python_deps():
         return False
 
 def get_openfoam_status(context):
-    """Returns True if the OpenFOAM bashrc exists."""
+    """Returns True if the OpenFOAM bashrc exists.
+
+    Args:
+      context: 
+
+    Returns:
+
+    """
     try:
         bashrc_path = context.preferences.addons[__package__].preferences.bashrc_path
     except Exception:
@@ -42,7 +49,15 @@ def get_openfoam_status(context):
     return False
 
 
-def _draw_startup_warning(self, context):
+def _draw_startup_warning(self, context) -> None:
+    """
+
+    Args:
+      context: 
+
+    Returns:
+
+    """
     self.layout.label(text="Classy Blocks is missing dependencies!", icon='ERROR')
     
     if not check_python_deps():
@@ -58,10 +73,11 @@ def _draw_startup_warning(self, context):
     self.layout.label(text="Please check the 'ClassyMesh' panel in the 3D Viewport to install them.")
 
 
-def _check_on_startup():
+def _check_on_startup() -> None:
     """Runs exactly once after Blender starts up to warn the user."""
     # We delay execution by 1 second so the UI is fully ready to display a popup
     def delayed_popup():
+        """ """
         has_py = check_python_deps()
         has_of = False
         try:
@@ -80,19 +96,30 @@ def _check_on_startup():
     bpy.app.timers.register(delayed_popup, first_interval=1.0)
 
 @bpy.app.handlers.persistent
-def _startup_handler(dummy):
+def _startup_handler(dummy) -> None:
+    """
+
+    Args:
+      dummy: 
+
+    Returns:
+
+    """
     _check_on_startup()
 
-def register_startup_checks():
+def register_startup_checks() -> None:
+    """ """
     if _startup_handler not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(_startup_handler)
 
-def unregister_startup_checks():
+def unregister_startup_checks() -> None:
+    """ """
     if _startup_handler in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(_startup_handler)
 
 
 class CLASSY_OT_install_python_deps(bpy.types.Operator):
+    """ """
     bl_idname = "classy.install_python_deps"
     bl_label = "Install Python Dependencies"
     bl_description = "Installs classy_blocks, pyvista, and nptyping into Blender's Python"
@@ -101,6 +128,15 @@ class CLASSY_OT_install_python_deps(bpy.types.Operator):
     _process = None
 
     def modal(self, context, event):
+        """
+
+        Args:
+          context: 
+          event: 
+
+        Returns:
+
+        """
         if event.type == 'TIMER':
             if self._process is not None:
                 ret = self._process.poll()
@@ -111,12 +147,28 @@ class CLASSY_OT_install_python_deps(bpy.types.Operator):
                     
                     if ret == 0:
                         self.report({'INFO'}, "Successfully installed Python dependencies!")
-                        def draw_success(self, context):
+                        def draw_success(self, context) -> None:
+                            """
+
+                            Args:
+                              context: 
+
+                            Returns:
+
+                            """
                             self.layout.label(text="Dependencies installed successfully!", icon='CHECKMARK')
                         context.window_manager.popup_menu(draw_success, title="Installation Complete", icon='INFO')
                     else:
                         self.report({'ERROR'}, "Failed to install dependencies (Check console)")
-                        def draw_error(self, context):
+                        def draw_error(self, context) -> None:
+                            """
+
+                            Args:
+                              context: 
+
+                            Returns:
+
+                            """
                             self.layout.label(text="Installation failed! Check system console.", icon='ERROR')
                         context.window_manager.popup_menu(draw_error, title="Installation Failed", icon='ERROR')
                     
@@ -128,8 +180,24 @@ class CLASSY_OT_install_python_deps(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         self.report({'INFO'}, "Installing Python dependencies in background...")
-        def draw_start(self, context):
+        def draw_start(self, context) -> None:
+            """
+
+            Args:
+              context: 
+
+            Returns:
+
+            """
             self.layout.label(text="Installing packages in the background...", icon='INFO')
             self.layout.label(text="This may take a minute. Please wait.")
         context.window_manager.popup_menu(draw_start, title="Installing Dependencies", icon='PACKAGE')
@@ -153,11 +221,20 @@ class CLASSY_OT_install_python_deps(bpy.types.Operator):
 
 
 class CLASSY_OT_install_openfoam(bpy.types.Operator):
+    """ """
     bl_idname = "classy.install_openfoam"
     bl_label = "Install OpenFOAM"
     bl_description = "Attempts to install OpenFOAM for your operating system"
     
     def execute(self, context):
+        """
+
+        Args:
+          context: 
+
+        Returns:
+
+        """
         os_name = platform.system()
         
         if os_name == "Windows":

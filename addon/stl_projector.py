@@ -27,6 +27,7 @@ import numpy as np
 _pv = None
 
 def _get_pyvista():
+    """ """
     global _pv
     if _pv is None:
         import pyvista
@@ -40,18 +41,19 @@ _HIGH_TRIANGLE_THRESHOLD = 500_000
 
 
 def load_stl(filepath: str):
-    """
-    Load and validate an STL file.
+    """Load and validate an STL file.
 
     Args:
-        filepath: Absolute path to an STL file.
+      filepath: Absolute path to an STL file.
+      filepath: str: 
 
     Returns:
-        pyvista.PolyData mesh object.
+      : pyvista.PolyData mesh object.
 
     Raises:
-        FileNotFoundError: if the file doesn't exist.
-        ValueError: if the file is empty or cannot be parsed.
+      FileNotFoundError: if the file doesn't exist.
+      ValueError: if the file is empty or cannot be parsed.
+
     """
     if not os.path.isfile(filepath):
         raise FileNotFoundError(f"STL file not found: {filepath}")
@@ -75,16 +77,18 @@ def load_stl(filepath: str):
 
 
 def validate_stl(filepath: str) -> dict:
-    """
-    Validate an STL file and return a status dict.
+    """Validate an STL file and return a status dict.
+
+    Args:
+      filepath: str: 
 
     Returns:
-        dict with keys:
-            valid (bool): True if the file loaded without error.
-            n_triangles (int): Number of triangles.
-            is_manifold (bool): True if the surface is watertight.
-            warnings (list[str]): Any non-fatal warnings.
-            error (str|None): Error message if invalid.
+      dict with keys: valid (bool): True if the file loaded without error.
+      n_triangles (int): Number of triangles.
+      is_manifold (bool): True if the surface is watertight.
+      warnings (list[str]): Any non-fatal warnings.
+      error (str|None): Error message if invalid.
+
     """
     result = {
         "valid": False,
