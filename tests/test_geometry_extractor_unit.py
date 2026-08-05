@@ -117,6 +117,8 @@ _UNIT_CUBE_BBOX = [
 def _load_geometry_extractor():
     mock_bpy = types.ModuleType("bpy")
     mock_bpy.context = MagicMock()
+    mock_bpy.path = MagicMock()
+    mock_bpy.path.abspath = lambda x: x
     sys.modules["bpy"] = mock_bpy
 
     mock_bmesh = types.ModuleType("bmesh")
