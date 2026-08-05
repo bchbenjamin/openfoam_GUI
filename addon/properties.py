@@ -203,6 +203,14 @@ class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
         default=0.0, min=0.0,
     )
 
+    # --- Terrain preview state ---
+    is_previewing_terrain: bpy.props.BoolProperty(
+        name="Terrain Preview Active",
+        description="True while a Shrinkwrap preview is applied. "
+                    "geometry_extractor ignores preview modifiers when this is set",
+        default=False,
+    )
+
 
 class ClassyMeshSceneProperties(bpy.types.PropertyGroup):
     case_path: bpy.props.StringProperty(

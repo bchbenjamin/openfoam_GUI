@@ -38,6 +38,8 @@ classes = [
     operators.CLASSY_OT_tag_loft,
     operators.CLASSY_OT_add_boundary_patch,
     operators.CLASSY_OT_remove_boundary_patch,
+    operators.CLASSY_OT_preview_projection,
+    operators.CLASSY_OT_clear_preview,
     foam_directories.FoamDirectoryProperties,
     foam_directories.CLASSY_PT_foam_directories,
     tutorial_manager.TutorialManagerProperties,

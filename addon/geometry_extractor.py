@@ -61,6 +61,19 @@ def extract_geometry(context):
     blocks = []
     warnings = []
 
+    # Auto-clear terrain preview modifiers so we export the underlying
+    # 8-vertex block geometry, not the subdivided Shrinkwrap preview.
+    for obj in context.scene.objects:
+        props = getattr(obj, "classy_block_props", None)
+        if props and getattr(props, "is_previewing_terrain", False):
+            for mod_name in ("(Preview) Terrain Shrinkwrap",
+                             "(Preview) Terrain Subsurf"):
+                mod = obj.modifiers.get(mod_name)
+                if mod:
+                    obj.modifiers.remove(mod)
+            obj.display_type = 'TEXTURED'
+            props.is_previewing_terrain = False
+
     for obj in context.scene.objects:
         if obj.type not in {"MESH", "CURVE"}:
             continue

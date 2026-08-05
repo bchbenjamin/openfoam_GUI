@@ -791,3 +791,149 @@ class CLASSY_OT_add_frustum(bpy.types.Operator):
         if context.active_object:
             context.active_object.classy_block_props.block_type = 'FRUSTUM'
         return {'FINISHED'}
+
+
+# ── Terrain Preview helpers ────────────────────────────────────────────
+
+_PREVIEW_SUBSURF_NAME = "(Preview) Terrain Subsurf"
+_PREVIEW_SHRINKWRAP_NAME = "(Preview) Terrain Shrinkwrap"
+_PREVIEW_STL_PREFIX = "_classy_terrain_"
+
+
+def _remove_preview_modifiers(obj):
+    """Strip the Subsurf + Shrinkwrap preview modifiers from *obj*."""
+    for name in (_PREVIEW_SHRINKWRAP_NAME, _PREVIEW_SUBSURF_NAME):
+        mod = obj.modifiers.get(name)
+        if mod:
+            obj.modifiers.remove(mod)
+
+
+class CLASSY_OT_preview_projection(bpy.types.Operator):
+    """Apply a temporary Shrinkwrap preview to visualise terrain conformance"""
+    bl_idname = "classy.preview_projection"
+    bl_label = "Preview Terrain Conformance"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.active_object
+        if not obj or obj.type != 'MESH':
+            return False
+        props = getattr(obj, "classy_block_props", None)
+        if not props:
+            return False
+        return bool(getattr(props, "stl_file", ""))
+
+    def execute(self, context):
+        obj = context.active_object
+        props = obj.classy_block_props
+
+        stl_path = bpy.path.abspath(props.stl_file.strip())
+        if not os.path.isfile(stl_path):
+            self.report({'ERROR'}, f"STL file not found: {stl_path}")
+            return {'CANCELLED'}
+
+        # If already previewing, toggle OFF
+        if props.is_previewing_terrain:
+            _remove_preview_modifiers(obj)
+            obj.display_type = 'TEXTURED'
+            props.is_previewing_terrain = False
+            self.report({'INFO'}, "Terrain preview removed")
+            return {'FINISHED'}
+
+        # ── 1. Import / re-use the STL in the scene ──────────────
+        # We cannot use the helper with bpy.ops while the context
+        # may change the active object, so do it inline.
+        basename = os.path.splitext(os.path.basename(stl_path))[0]
+        canonical_name = _PREVIEW_STL_PREFIX + basename
+
+        stl_obj = bpy.data.objects.get(canonical_name)
+        if stl_obj is None:
+            # Temporarily deselect everything so STL import selects only the new obj
+            prev_active = context.view_layer.objects.active
+            bpy.ops.object.select_all(action='DESELECT')
+
+            bpy.ops.wm.stl_import(filepath=stl_path)
+            stl_obj = context.active_object
+
+            if stl_obj is None:
+                self.report({'ERROR'}, "STL import failed — no object created")
+                return {'CANCELLED'}
+
+            stl_obj.name = canonical_name
+            if stl_obj.data:
+                stl_obj.data.name = canonical_name
+
+            # Hide from viewport display and render
+            stl_obj.hide_set(True)
+            stl_obj.hide_render = True
+            stl_obj.hide_select = True
+
+            # Restore selection to the proxy block
+            bpy.ops.object.select_all(action='DESELECT')
+            obj.select_set(True)
+            context.view_layer.objects.active = obj
+
+        # ── 2. Subdivide the proxy to give it enough geometry ─────
+        _remove_preview_modifiers(obj)  # idempotent cleanup
+
+        subsurf = obj.modifiers.new(name=_PREVIEW_SUBSURF_NAME, type='SUBSURF')
+        subsurf.subdivision_type = 'SIMPLE'
+        subsurf.levels = 4          # 6 faces × 4^4 = ~1536 quads — enough for curvature
+        subsurf.render_levels = 0   # never needed in render
+
+        # ── 3. Shrinkwrap ─────────────────────────────────────────
+        shrinkwrap = obj.modifiers.new(name=_PREVIEW_SHRINKWRAP_NAME, type='SHRINKWRAP')
+        shrinkwrap.target = stl_obj
+        shrinkwrap.wrap_method = 'PROJECT'
+
+        # Map the projection face to a projection axis
+        face = props.stl_projection_face
+        if face in ('top', 'bottom'):
+            shrinkwrap.use_project_z = True
+        elif face in ('front', 'back'):
+            shrinkwrap.use_project_y = True
+        elif face in ('left', 'right'):
+            shrinkwrap.use_project_x = True
+        else:
+            shrinkwrap.use_project_z = True  # safe default
+
+        # Project in both directions so the proxy always finds the surface
+        shrinkwrap.use_negative_direction = True
+        shrinkwrap.use_positive_direction = True
+
+        # ── 4. Visual feedback ────────────────────────────────────
+        obj.display_type = 'WIRE'
+
+        # ── 5. Set sentinel flag ──────────────────────────────────
+        props.is_previewing_terrain = True
+
+        self.report({'INFO'}, "Terrain preview applied — proxy shown as wireframe")
+        return {'FINISHED'}
+
+
+class CLASSY_OT_clear_preview(bpy.types.Operator):
+    """Remove the terrain conformance preview from the active object"""
+    bl_idname = "classy.clear_preview"
+    bl_label = "Clear Terrain Preview"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.active_object
+        if not obj or obj.type != 'MESH':
+            return False
+        props = getattr(obj, "classy_block_props", None)
+        return props and getattr(props, "is_previewing_terrain", False)
+
+    def execute(self, context):
+        obj = context.active_object
+        props = obj.classy_block_props
+
+        _remove_preview_modifiers(obj)
+        obj.display_type = 'TEXTURED'
+        props.is_previewing_terrain = False
+
+        self.report({'INFO'}, "Terrain preview removed")
+        return {'FINISHED'}
+

@@ -299,6 +299,23 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
         col.enabled = bool(obj and obj.select_get())
         col.operator("mesh.classy_export_terrain", text="Export as Terrain STL")
 
+        # Preview / Clear terrain conformance
+        if obj and obj.type == 'MESH':
+            preview_props = getattr(obj, "classy_block_props", None)
+            if preview_props and getattr(preview_props, "stl_file", ""):
+                if preview_props.is_previewing_terrain:
+                    row = col.row()
+                    row.alert = True
+                    row.operator("classy.preview_projection",
+                                 text="Remove Terrain Preview",
+                                 icon='HIDE_ON')
+                    row.operator("classy.clear_preview",
+                                 text="", icon='X')
+                else:
+                    col.operator("classy.preview_projection",
+                                 text="Preview Terrain Conformance",
+                                 icon='RESTRICT_VIEW_OFF')
+
         # --- Auto-Update Mesh controls ---
         layout.separator()
         layout.label(text="Auto-Update Mesh")
