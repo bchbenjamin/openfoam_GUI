@@ -124,19 +124,6 @@ class ClassyMeshObjectProperties(bpy.types.PropertyGroup):
             ("right", "Right", ""),
         ],
     )
-    stl_projection_direction: bpy.props.EnumProperty(
-        name="Direction",
-        description="Direction for Python-side fallback projection/preview",
-        items=[
-            ("z", "Z Axis", ""),
-            ("y", "Y Axis", ""),
-            ("x", "X Axis", ""),
-            ("-z", "-Z Axis", ""),
-            ("-y", "-Y Axis", ""),
-            ("-x", "-X Axis", ""),
-        ],
-        default="z"
-    )
     stl_file: bpy.props.StringProperty(name="STL File", subtype="FILE_PATH", default="")
 
     # --- EXTRUDE parameters ---

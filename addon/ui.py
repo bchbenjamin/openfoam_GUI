@@ -242,8 +242,14 @@ class CLASSY_PT_main_panel(bpy.types.Panel):
                 stl_box = layout.box()
                 stl_box.label(text="STL Face Projection (Terrain Mapping)", icon='MOD_SHRINKWRAP')
                 stl_box.prop(props, "stl_projection_face")
-                stl_box.prop(props, "stl_projection_direction")
                 stl_box.prop(props, "stl_file")
+                
+                # Add UI warnings for proper mesh generation
+                stl_box.label(text="Note: Terrain projection requires high Cell counts", icon='INFO')
+                stl_box.label(text="(e.g., 30+) on the projected face to capture curvature.")
+                stl_box.label(text="Note: Blender proxy remains flat. Terrain conformance", icon='INFO')
+                stl_box.label(text="is applied by OpenFOAM's blockMesh.")
+                
                 if props.stl_file:
                     stl_box.operator("classy.project_to_stl", text="Validate STL", icon='CHECKMARK')
 
