@@ -1,0 +1,9 @@
+schema_version = "1.0.0"
+id = "classy_blender_mesh"
+version = "1.1.0"
+name = "Classy Blocks Integration"
+tagline = "Seamlessly bridging Blender's intuitive 3D modeling with OpenFOAM's structured hex-meshing."
+maintainer = "bchbenjamin"
+type = "add-on"
+blender_version_min = "4.2.0"
+license = ["SPDX:GPL-3.0-or-later"]
