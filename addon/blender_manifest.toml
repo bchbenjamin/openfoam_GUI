@@ -1,0 +1,11 @@
+schema_version = "1.0.0"
+id = "classy_blender_mesh"
+version = "1.1.0"
+name = "Classy Blocks Integration"
+tagline = "Bridge Blender 3D modeling with OpenFOAM hex-meshing"
+maintainer = "bchbenjamin"
+type = "add-on"
+blender_version_min = "4.2.0"
+license = ["SPDX:GPL-3.0-or-later"]
+website = "https://github.com/bchbenjamin/classy_blender_mesh"
+issues = "https://github.com/bchbenjamin/classy_blender_mesh/issues"

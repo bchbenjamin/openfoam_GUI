@@ -1,10 +1,11 @@
 <div align="center">
-  <img src="README_images/FOSSEE.png" alt="Classy Blender Mesh Logo" width="200" />
+  <img src="README_images/logo.png" alt="Classy Blender Mesh Logo" width="200" />
   <h1>Classy Blender Mesh</h1>
   <p>Seamlessly bridging Blender's intuitive 3D modeling with OpenFOAM's structured hex-meshing.</p>
+  <p><em>This add-on was developed as part of a FOSSEE Internship.</em></p>
 
   [![Release](https://img.shields.io/github/v/release/bchbenjamin/openfoam_GUI?color=blue&label=version)](https://github.com/bchbenjamin/openfoam_GUI/releases)
-  [![Blender](https://img.shields.io/badge/Blender-4.1+-orange.svg)](https://www.blender.org/)
+  [![Blender](https://img.shields.io/badge/Blender-4.2+-orange.svg)](https://www.blender.org/)
   [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
   [![License](https://img.shields.io/badge/License-GPLv3-green.svg)](LICENSE)
 </div>
@@ -18,9 +19,9 @@
 
 ---
 
-## Exact Problem Statement
+## Overview
 
-The goal of this project is the **Classy Blocks Integration (Structured Mesh)**:
+The goal of this extension is to provide **Classy Blocks Integration (Structured Mesh)**:
 * Replace traditional, manual `blockMesh` dictionary writing with `classy_blocks` (an open-source Python API).
 * Use a Blender frontend to intuitively create geometry (points, lines, sketches, extrusion, rotation).
 * Rely on a backend where `classy_blocks` programmatically generates the `blockMeshDict`.
